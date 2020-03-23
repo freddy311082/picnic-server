@@ -2,12 +2,48 @@
 
 
 [[projects]]
+  digest = "1:5d5622ebc2a1bd2c541bfcd8c2a42c60453b8560a2bfc8b5feddfbfb9ea9adc0"
+  name = "github.com/friendsofgo/graphiql"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "cda92ee46d11a39c721305a9fc01a5133c53b88c"
+  version = "v0.2.2"
+
+[[projects]]
   digest = "1:ebdeb808fe6861df1eaa262006a879bdbed826dd51c343bd5e681045e194997c"
   name = "github.com/google/logger"
   packages = ["."]
   pruneopts = "UT"
   revision = "7047ffcb7339f3f59be32de74a92217cb17cb40c"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:582b704bebaa06b48c29b0cec224a6058a09c86883aaddabde889cd1a5f73e1b"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
+
+[[projects]]
+  digest = "1:01a3bf7bc37c96547897d253f8437c89cd8e80ea0211ff5f440fbc19f44cd14e"
+  name = "github.com/graphql-go/graphql"
+  packages = [
+    ".",
+    "gqlerrors",
+    "language/ast",
+    "language/kinds",
+    "language/lexer",
+    "language/location",
+    "language/parser",
+    "language/printer",
+    "language/source",
+    "language/typeInfo",
+    "language/visitor",
+  ]
+  pruneopts = "UT"
+  revision = "02caa8943d64d9cd60bd67f2bc163676716bb963"
+  version = "v0.7.9"
 
 [[projects]]
   branch = "master"
@@ -24,6 +60,11 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = ["github.com/google/logger"]
+  input-imports = [
+    "github.com/friendsofgo/graphiql",
+    "github.com/google/logger",
+    "github.com/google/uuid",
+    "github.com/graphql-go/graphql",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

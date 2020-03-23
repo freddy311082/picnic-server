@@ -1,0 +1,11 @@
+{
+  "db": {
+    "mongodb": {
+      "host": "cluster0-uekoh.mongodb.net/test?retryWrites=true&w=majority",
+      "port": 27000,
+      "dbname": "picnic",
+      "user": "admin",
+      "password": "Picnic2020"
+    }
+  }
+}
