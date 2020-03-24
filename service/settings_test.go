@@ -4,8 +4,12 @@ import (
 	"testing"
 )
 
-func TestLoadDbSettings(t *testing.T) {
-	const fileContent = `{
+type mockSettings struct {
+	settingsImp
+}
+
+func (settings *mockSettings) fileContent() ([]byte, error) {
+	return []byte(`{
   "db": {
     "mongodb": {
       "host": "cluster0-uekoh.mongodb.net/test?retryWrites=true&w=majority",
@@ -15,7 +19,16 @@ func TestLoadDbSettings(t *testing.T) {
       "password": "Picnic2020"
     }
   }
-}`
-	settings := NewInstance()
+}`), nil
+}
 
+func TestLoadSettingsFile(t *testing.T) {
+	settingsObj := settingsImp{}
+
+	expectedPath := "/Users/freddymartinezgarcia/go/src/github.com/freddy311082/picnic-server/service/../config/settings.json"
+	resolvedPath := settingsObj.filename()
+
+	if resolvedPath != expectedPath {
+		t.Error("Filename resolved as settings.json is not correct.")
+	}
 }

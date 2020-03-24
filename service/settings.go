@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/logger"
+	"github.com/freddy311082/picnic-server/utils"
 	"io/ioutil"
+	"os"
+	"path"
+	"runtime"
 )
 
 const CONFIG_FILE_PATH = "./config/settings.json"
@@ -23,6 +26,7 @@ type DBSettings interface {
 
 type Settings interface {
 	DBSettingsValues() DBSettings
+	filename() string
 }
 
 // ******************************* Struct ***********************************
@@ -82,8 +86,8 @@ func (dbSettings *dbSettingsImp) validate() error {
 		len(dbSettings._user) == 0) &&
 		len(dbSettings._password) == 0 {
 		const msg = "invalid database settings values. Please check and rerun the server again"
-		logger.Error(msg)
-		logger.Info(fmt.Sprint(`host: %s
+		utils.PicnicLog_ERROR(msg)
+		utils.PicnicLog_INFO(fmt.Sprintf(`host: %s
 port: %d
 dbname: %s
 user: %s
@@ -109,27 +113,52 @@ func (settings *settingsImp) DBSettingsValues() DBSettings {
 	return settings.dbSettings
 }
 
-func (settings *settingsImp) load() error {
-	var err error
-	var content []byte
-	if content, err = ioutil.ReadFile(CONFIG_FILE_PATH); err != nil {
-		return err
+func (settings *settingsImp) filename() string {
+	_, filename, _, ok := runtime.Caller(0)
+
+	if !ok {
+		panic("settings.json file not found")
+		return ""
 	}
 
-	return settings.loadContent(content)
+	baseDir := path.Dir(filename)
+	result := baseDir + string(os.PathSeparator) + ".." + string(os.PathSeparator) + path.Join("config", "settings.json")
+
+	return result
+}
+
+func (settings *settingsImp) fileContent() ([]byte, error) {
+
+	filename := settings.filename()
+	var content, err = ioutil.ReadFile(filename)
+	if err != nil {
+		msg := fmt.Sprintf("Error reading file %s", filename)
+		utils.PicnicLog_ERROR(msg)
+		return nil, err
+	}
+
+	return content, nil
+}
+
+func (settings *settingsImp) load() error {
+	if content, err := settings.fileContent(); err != nil {
+		return err
+	} else {
+		return settings.loadContent(content)
+	}
 }
 
 func (settings *settingsImp) loadContent(content []byte) error {
 	if content == nil || len(content) == 0 {
 		msg := "invalid setting.json file content"
-		logger.Error(msg)
+		utils.PicnicLog_ERROR(msg)
 		return errors.New(msg)
 	} else {
 
 		var data map[string]interface{}
 		if err := json.Unmarshal(content, &data); err != nil {
 			const msg = "error parsing content of settings.json"
-			logger.Error(msg)
+			utils.PicnicLog_ERROR(msg)
 			return errors.New(msg)
 		}
 		if err := settings.loadDbSettings(data); err != nil {
@@ -148,3 +177,32 @@ func (settings *settingsImp) loadDbSettings(data map[string]interface{}) error {
 // ******************************* Public Functions ***********************************
 
 var settingsSingleton *settingsImp
+
+func SettingsObj() Settings {
+
+	type result struct {
+		instance *settingsImp
+		err      error
+	}
+
+	ch := make(chan result)
+
+	go func() {
+		if settingsSingleton == nil {
+			settingsSingleton = &settingsImp{}
+			err := settingsSingleton.load()
+			ch <- result{
+				instance: settingsSingleton,
+				err:      err,
+			}
+		}
+
+		ch <- result{
+			instance: settingsSingleton,
+			err:      nil,
+		}
+	}()
+
+	value := <-ch
+	return value.instance
+}

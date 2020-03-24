@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:ffe1acc45036634833089ebe46415868ae0af3653d77f59dce7efbc624cfbc8c"
+  name = "github.com/containous/yaegi"
+  packages = ["interp"]
+  pruneopts = "UT"
+  revision = "ca68c6cd95839859308ac819cec0d2032799318f"
+  version = "v0.8.0"
+
+[[projects]]
   digest = "1:5d5622ebc2a1bd2c541bfcd8c2a42c60453b8560a2bfc8b5feddfbfb9ea9adc0"
   name = "github.com/friendsofgo/graphiql"
   packages = ["."]
@@ -61,6 +69,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/containous/yaegi/interp",
     "github.com/friendsofgo/graphiql",
     "github.com/google/logger",
     "github.com/google/uuid",
