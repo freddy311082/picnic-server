@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,10 +19,13 @@ const CONFIG_FILE_PATH = "./config/settings.json"
 
 type DBSettings interface {
 	Host() string
-	Port() uint
+	Port() int
 	DbName() string
 	User() string
 	Password() string
+	DriverType() utils.DriverTypeEnum
+
+	ConnectionString() string
 }
 
 type Settings interface {
@@ -35,7 +39,7 @@ type Settings interface {
 
 type dbSettingsImp struct {
 	_host     string
-	_port     uint
+	_port     int
 	_dbName   string
 	_user     string
 	_password string
@@ -45,7 +49,7 @@ func (dbSettings *dbSettingsImp) Host() string {
 	return dbSettings._host
 }
 
-func (dbSettings *dbSettingsImp) Port() uint {
+func (dbSettings *dbSettingsImp) Port() int {
 	return dbSettings._port
 }
 
@@ -61,14 +65,25 @@ func (dbSettings *dbSettingsImp) Password() string {
 	return dbSettings._password
 }
 
+func (dbSettings *dbSettingsImp) DriverType() utils.DriverTypeEnum {
+	return utils.MONGODB
+}
+
+func (dbSettings *dbSettingsImp) ConnectionString() string {
+	hostWithDb := fmt.Sprintf(dbSettings._host, dbSettings._dbName)
+	connectionString := fmt.Sprintf("mongodb+srv://%s:%s@%s", dbSettings._user, dbSettings._password, hostWithDb)
+	return connectionString
+}
+
 func (dbSettings *dbSettingsImp) loadData(data map[string]interface{}) error {
 	dbDataSettings := data["db"].(map[string]interface{})
 
-	dbSettings._host = dbDataSettings["host"].(string)
-	dbSettings._port = dbDataSettings["port"].(uint)
-	dbSettings._dbName = dbDataSettings["dbname"].(string)
-	dbSettings._user = dbDataSettings["user"].(string)
-	dbSettings._password = dbDataSettings["password"].(string)
+	mongodb := dbDataSettings["mongodb"].(map[string]interface{})
+	dbSettings._host = mongodb["host"].(string)
+	dbSettings._port = int(mongodb["port"].(float64))
+	dbSettings._dbName = mongodb["dbname"].(string)
+	dbSettings._user = mongodb["user"].(string)
+	dbSettings._password = mongodb["password"].(string)
 
 	var err error
 
@@ -99,8 +114,10 @@ password: %s`, dbSettings._host, dbSettings._port, dbSettings._dbName, dbSetting
 }
 
 func (dbSettings *dbSettingsImp) encryptPassword() {
-	newPassword := sha256.Sum256(([]byte)("Picnic:" + dbSettings._password))
-	dbSettings._password = fmt.Sprint(newPassword)
+	hash := sha256.New()
+	hash.Write(([]byte)(dbSettings._password))
+
+	dbSettings._password = base64.URLEncoding.EncodeToString(hash.Sum(nil))
 }
 
 // ******************************* dbSettingsImp ***********************************

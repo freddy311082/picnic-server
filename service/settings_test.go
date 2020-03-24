@@ -4,24 +4,6 @@ import (
 	"testing"
 )
 
-type mockSettings struct {
-	settingsImp
-}
-
-func (settings *mockSettings) fileContent() ([]byte, error) {
-	return []byte(`{
-  "db": {
-    "mongodb": {
-      "host": "cluster0-uekoh.mongodb.net/test?retryWrites=true&w=majority",
-      "port": 27000,
-      "dbname": "picnic",
-      "user": "admin",
-      "password": "Picnic2020"
-    }
-  }
-}`), nil
-}
-
 func TestLoadSettingsFile(t *testing.T) {
 	settingsObj := settingsImp{}
 
@@ -30,5 +12,15 @@ func TestLoadSettingsFile(t *testing.T) {
 
 	if resolvedPath != expectedPath {
 		t.Error("Filename resolved as settings.json is not correct.")
+	}
+}
+
+func TestSettingsImp_LoadObject(t *testing.T) {
+	settingsObj := SettingsObj()
+	connStrExpected := "mongodb+srv://admin:AtN9WUWKwftoqijRPnAwT8Tam6WCJ2WjdAHwChQ8Tp0=@cluster0-uekoh.mongodb.net/picnic?retryWrites=true&w=majority"
+	connStrValue := settingsObj.DBSettingsValues().ConnectionString()
+	if connStrValue != connStrExpected {
+		t.Error("Invalid settings data loaded.")
+		t.Log("Value received: ", connStrValue)
 	}
 }
