@@ -23,17 +23,50 @@ type DBSettings interface {
 	DbName() string
 	User() string
 	Password() string
-	DriverType() utils.DriverTypeEnum
+	DriverType() utils.DBTypeEnum
 
+	ChangeDatabase(dbName string)
 	ConnectionString() string
+}
+
+type APISettings interface {
+	GraphiQL() bool
+	HttpPort() int
 }
 
 type Settings interface {
 	DBSettingsValues() DBSettings
+	APISettings() APISettings
 	filename() string
 }
 
 // ******************************* Struct ***********************************
+
+// ******************************* apiSettingsImp ***********************************
+
+type apiSettingsImp struct {
+	allowGraphiQL bool
+	httpPort      int
+}
+
+func (apiSettings *apiSettingsImp) HttpPort() int {
+	return apiSettings.httpPort
+}
+
+func (apiSettings *apiSettingsImp) GraphiQL() bool {
+	return apiSettings.allowGraphiQL
+}
+
+func (apiSettings *apiSettingsImp) loadData(data map[string]interface{}) error {
+	if apiMap, ok := data[utils.WEBSERVER_JSON_KEY].(map[string]interface{}); !ok {
+		const msg = "invalid settings.json. Error or missing API config"
+		utils.PicnicLog_ERROR(msg)
+		return errors.New(msg)
+	} else {
+		apiSettings.allowGraphiQL = apiMap[utils.GRAPHIQL_JSON_KEY].(bool)
+		apiSettings.httpPort = apiMap[utils.HTTP_PORT_JSON_KEY].(int)
+	}
+}
 
 // ******************************* dbSettingsImp ***********************************
 
@@ -65,8 +98,12 @@ func (dbSettings *dbSettingsImp) Password() string {
 	return dbSettings._password
 }
 
-func (dbSettings *dbSettingsImp) DriverType() utils.DriverTypeEnum {
-	return utils.MONGODB
+func (dbSettings *dbSettingsImp) DriverType() utils.DBTypeEnum {
+	return utils.DBType_MONGODB
+}
+
+func (dbSettings *dbSettingsImp) ChangeDatabase(dbName string) {
+	dbSettings._dbName = dbName
 }
 
 func (dbSettings *dbSettingsImp) ConnectionString() string {
@@ -76,14 +113,17 @@ func (dbSettings *dbSettingsImp) ConnectionString() string {
 }
 
 func (dbSettings *dbSettingsImp) loadData(data map[string]interface{}) error {
-	dbDataSettings := data["db"].(map[string]interface{})
-
-	mongodb := dbDataSettings["mongodb"].(map[string]interface{})
-	dbSettings._host = mongodb["host"].(string)
-	dbSettings._port = int(mongodb["port"].(float64))
-	dbSettings._dbName = mongodb["dbname"].(string)
-	dbSettings._user = mongodb["user"].(string)
-	dbSettings._password = mongodb["password"].(string)
+	if dbMap, okDb := data["db"].(map[string]interface{}); !okDb {
+		return errors.New("missing \"db\" key in settings.json")
+	} else if mongodbMap, okMongodb := dbMap["mongodb"].(map[string]interface{}); !okMongodb {
+		return errors.New("missing \"mongodb\" key in settings.json")
+	} else {
+		dbSettings._host = mongodbMap["host"].(string)
+		dbSettings._port = int(mongodbMap["port"].(float64))
+		dbSettings._dbName = mongodbMap["dbname"].(string)
+		dbSettings._user = mongodbMap["user"].(string)
+		dbSettings._password = mongodbMap["password"].(string)
+	}
 
 	var err error
 
@@ -123,7 +163,12 @@ func (dbSettings *dbSettingsImp) encryptPassword() {
 // ******************************* dbSettingsImp ***********************************
 
 type settingsImp struct {
-	dbSettings *dbSettingsImp
+	dbSettings  *dbSettingsImp
+	apiSettings *apiSettingsImp
+}
+
+func (settings *settingsImp) APISettings() APISettings {
+	return settings.apiSettings
 }
 
 func (settings *settingsImp) DBSettingsValues() DBSettings {
@@ -180,6 +225,8 @@ func (settings *settingsImp) loadContent(content []byte) error {
 		}
 		if err := settings.loadDbSettings(data); err != nil {
 			return err
+		} else if err = settings.loadApiSettings(data); err != nil {
+			return err
 		}
 	}
 
@@ -189,6 +236,11 @@ func (settings *settingsImp) loadContent(content []byte) error {
 func (settings *settingsImp) loadDbSettings(data map[string]interface{}) error {
 	settings.dbSettings = &dbSettingsImp{}
 	return settings.dbSettings.loadData(data)
+}
+
+func (settings *settingsImp) loadApiSettings(data map[string]interface{}) error {
+	settings.apiSettings = &apiSettingsImp{}
+	return settings.apiSettings.loadData(data)
 }
 
 // ******************************* Public Functions ***********************************

@@ -2,8 +2,8 @@ package api
 
 import "github.com/graphql-go/graphql"
 
-var RootQuery = graphql.NewObject(graphql.ObjectConfig{
-	Name: "RootQuery",
+var rootQuery = graphql.NewObject(graphql.ObjectConfig{
+	Name: "RootQueries",
 	Fields: graphql.Fields{
 		"users": &graphql.Field{
 			Type: &graphql.List{

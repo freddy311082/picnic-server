@@ -1,7 +1,14 @@
 package utils
 
-type DriverTypeEnum int
+type DBTypeEnum int
 
 const (
-	MONGODB = iota
+	DBType_MONGODB = iota
+)
+
+type EnvTypeEnum int
+
+const (
+	PRODUCTION = iota
+	TESTING
 )
