@@ -5,12 +5,22 @@ import (
 	"github.com/freddy311082/picnic-server/model"
 )
 
-type Service struct {
+type Service interface {
+	Users(startPosition, offset int) ([]model.User, error)
+	RegisterUser(user *model.User) (*model.User, error)
 }
 
-func (service *Service) users(startPosition, offset int) {
+type serviceImp struct {
 }
 
-func (service *Service) RegisterUser(user *model.User) (*model.User, error) {
+func (service *serviceImp) RegisterUser(user *model.User) (*model.User, error) {
 	return dbmanager.DBManagerInstance().RegisterNewUser(user)
+}
+
+func (service *serviceImp) Users(startPosition, offset int) ([]model.User, error) {
+	return dbmanager.DBManagerInstance().AllUsers(startPosition, offset)
+}
+
+func ServiceInstance() Service {
+	return &serviceImp{}
 }

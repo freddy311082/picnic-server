@@ -22,7 +22,7 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-
+				return nil, nil
 			},
 			Description: "Register a new user in the system by email. If the user already exists and error will" +
 				" be raised.",

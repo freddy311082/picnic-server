@@ -8,6 +8,7 @@ type DBManager interface {
 	IsOpen() bool
 	RegisterNewUser(user *model.User) (*model.User, error)
 	GetUser(email string) (*model.User, error)
+	AllUsers(startPosition, offset int) (model.UserList, error)
 }
 
 var dbManagerInstance DBManager

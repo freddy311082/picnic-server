@@ -1,6 +1,9 @@
 package api
 
-import "github.com/graphql-go/graphql"
+import (
+	"github.com/freddy311082/picnic-server/service"
+	"github.com/graphql-go/graphql"
+)
 
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootQueries",
@@ -24,7 +27,11 @@ the offset.`,
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+				var startPos, offset int
+				startPos, _ = p.Args["start_pos"].(int)
+				offset, _ = p.Args["offset"].(int)
 
+				return service.ServiceInstance().Users(startPos, offset)
 			},
 		},
 	},

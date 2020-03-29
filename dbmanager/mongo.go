@@ -2,7 +2,10 @@ package dbmanager
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/freddy311082/picnic-server/model"
+	"github.com/freddy311082/picnic-server/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -13,6 +16,15 @@ type mongodbManagerImp struct {
 	client        *mongo.Client
 	clientOptions *options.ClientOptions
 	db            *mongo.Database
+}
+
+func (dbManager *mongodbManagerImp) init() {
+	// users collection
+	usersCollection := dbManager.db.Collection(utils.USERS_COLLECTION)
+	usersCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
+		Keys:    bson.M{"email": 1},
+		Options: options.Index().SetUnique(true),
+	})
 }
 
 func (dbManager *mongodbManagerImp) Close() error {
@@ -39,7 +51,7 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 	}
 
 	if user == nil {
-		collection := dbManager.db.Collection("users")
+		collection := dbManager.db.Collection(utils.USERS_COLLECTION)
 		if result, err := collection.InsertOne(context.TODO(), user); err != nil {
 			return nil, err
 		} else {
@@ -51,7 +63,7 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 }
 
 func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
-	collection := dbManager.db.Collection("users")
+	collection := dbManager.db.Collection(utils.USERS_COLLECTION)
 	query := &bson.M{
 		"email": email,
 	}
@@ -70,6 +82,44 @@ func (dbManager *mongodbManagerImp) Open() error {
 	}
 
 	return err
+}
+
+func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.UserList, error) {
+	if startPosition < 0 {
+		return nil, utils.ErrorAndLog("start position cannot be zero or a negative number")
+	}
+
+	findOptions := options.Find()
+
+	if offset > 0 {
+		findOptions.SetLimit(int64(offset))
+	}
+
+	if startPosition > 0 {
+		findOptions.SetSkip(int64(startPosition))
+	}
+
+	collection := dbManager.db.Collection(utils.USERS_COLLECTION)
+	cursor, err := collection.Find(context.TODO(), nil, findOptions)
+
+	if err != nil {
+		utils.PicnicLog_ERROR(fmt.Sprintf("%s", err))
+		return nil, err
+	}
+
+	var users model.UserList
+	var userDb *mdbUserModel
+
+	for cursor.Next(context.TODO()) {
+		if err := cursor.Decode(userDb); err != nil {
+			return nil, utils.ErrorAndLog(err.Error())
+		}
+
+		user := userDb.toModel()
+		users = append(users, *user)
+	}
+
+	return users, nil
 }
 
 func createMongoDbManager(connectionString string) *mongodbManagerImp {

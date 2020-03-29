@@ -27,16 +27,19 @@ type DBSettings interface {
 
 	ChangeDatabase(dbName string)
 	ConnectionString() string
+	ToString() string
 }
 
 type APISettings interface {
 	GraphiQL() bool
 	HttpPort() int
+	ToString() string
 }
 
 type Settings interface {
 	DBSettingsValues() DBSettings
 	APISettings() APISettings
+	ToString() string
 	filename() string
 }
 
@@ -47,6 +50,16 @@ type Settings interface {
 type apiSettingsImp struct {
 	allowGraphiQL bool
 	httpPort      int
+}
+
+func (apiSettings *apiSettingsImp) ToString() string {
+	return fmt.Sprintf(`
+========== API Settings =========
+Allowed GraphiQL: %s
+HTTP Port: %d
+=================================
+
+`, fmt.Sprint(apiSettings.allowGraphiQL), apiSettings.httpPort)
 }
 
 func (apiSettings *apiSettingsImp) HttpPort() int {
@@ -64,8 +77,10 @@ func (apiSettings *apiSettingsImp) loadData(data map[string]interface{}) error {
 		return errors.New(msg)
 	} else {
 		apiSettings.allowGraphiQL = apiMap[utils.GRAPHIQL_JSON_KEY].(bool)
-		apiSettings.httpPort = apiMap[utils.HTTP_PORT_JSON_KEY].(int)
+		apiSettings.httpPort = int(apiMap[utils.HTTP_PORT_JSON_KEY].(float64))
 	}
+
+	return nil
 }
 
 // ******************************* dbSettingsImp ***********************************
@@ -76,6 +91,20 @@ type dbSettingsImp struct {
 	_dbName   string
 	_user     string
 	_password string
+}
+
+func (dbSettings *dbSettingsImp) ToString() string {
+	return fmt.Sprintf(`
+========== Database Settings =========
+Host: %s
+DB Port: %d
+DB Name: %s
+DB User: %s
+DB Password: %s
+Connection String: %s
+=================================
+`, dbSettings._host, dbSettings._port, dbSettings._dbName, dbSettings._user, dbSettings._password,
+		dbSettings.ConnectionString())
 }
 
 func (dbSettings *dbSettingsImp) Host() string {
@@ -173,6 +202,10 @@ func (settings *settingsImp) APISettings() APISettings {
 
 func (settings *settingsImp) DBSettingsValues() DBSettings {
 	return settings.dbSettings
+}
+
+func (settings *settingsImp) ToString() string {
+	return settings.dbSettings.ToString() + settings.apiSettings.ToString()
 }
 
 func (settings *settingsImp) filename() string {

@@ -1,14 +1,19 @@
 package main
 
 import (
+	"github.com/freddy311082/picnic-server/api"
 	"github.com/google/logger"
 	"io/ioutil"
 )
 
-func main() {
+func startServer() {
 	defer logger.Init("PICNIC", true, false, ioutil.Discard).Close()
-
-	logger.Info("Starting Picnic Web Server")
-	logger.Info("Started Picnic Web Server")
+	server := api.WebServerInstance()
+	server.Start()
 	logger.Info("Stopped Picnic Web Server")
+}
+
+func main() {
+	startServer()
+	//api.StartTest()
 }

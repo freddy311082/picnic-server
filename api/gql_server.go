@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/freddy311082/picnic-server/service"
 	"github.com/freddy311082/picnic-server/utils"
+	"github.com/friendsofgo/graphiql"
+	"github.com/google/logger"
 	"github.com/graphql-go/graphql"
 	"net/http"
 )
@@ -23,19 +25,32 @@ type gqlServerImp struct {
 
 func (server *gqlServerImp) Start() {
 	portStr := fmt.Sprintf(":%d", service.SettingsObj().APISettings().HttpPort())
-
+	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
+	if err != nil {
+		utils.PicnicLog_ERROR(err.Error())
+		return
+	}
+	http.Handle("/graphiql", graphiqlHandler)
 	http.Handle("/graphql", server.getGqlHandler())
+	logger.Info("Starting Picnic Web Server")
+	logger.Info(service.SettingsObj().ToString())
 	http.ListenAndServe(portStr, nil)
 }
 
-func (server *gqlServerImp) getGqlHandler() http.HandlerFunc {
+func (server *gqlServerImp) getGqlHandler() http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.Body == nil {
+			http.Error(response, "No query data.", 400)
 			return
 		}
 
 		rBody := server.decodeRequest(request, response)
-		server.processQuery(rBody.Query)
+		if result, err := server.processQuery(rBody.Query); err != nil {
+			http.Error(response, err.Error(), 400)
+		} else {
+			fmt.Fprintf(response, "%s", result)
+		}
+
 	})
 }
 
@@ -68,4 +83,8 @@ func (server *gqlServerImp) processQuery(query string) (string, error) {
 
 func (server *gqlServerImp) Stop() {
 
+}
+
+func WebServerInstance() WebServer {
+	return &gqlServerImp{}
 }
