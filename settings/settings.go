@@ -1,4 +1,4 @@
-package service
+package settings
 
 import (
 	"crypto/sha256"

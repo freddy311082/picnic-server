@@ -1,15 +1,15 @@
 package dbmanager
 
 import (
-	"github.com/freddy311082/picnic-server/service"
+	"github.com/freddy311082/picnic-server/settings"
 	"testing"
 )
 
 func initMongodbManagerForTesting() (*mongodbManagerImp, error) {
-	settingsObj := service.SettingsObj()
+	settingsObj := settings.SettingsObj()
 	settingsObj.DBSettingsValues().ChangeDatabase("picnic-testing")
 	connString := settingsObj.DBSettingsValues().ConnectionString()
-	mongodbManager := createMongoDbManager(connString)
+	mongodbManager := createMongoDbManagerForTesting(connString)
 
 	if err := mongodbManager.Open(); err != nil {
 		return nil, err

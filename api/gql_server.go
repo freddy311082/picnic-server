@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/freddy311082/picnic-server/service"
+	"github.com/freddy311082/picnic-server/settings"
 	"github.com/freddy311082/picnic-server/utils"
 	"github.com/friendsofgo/graphiql"
-	"github.com/google/logger"
 	"github.com/graphql-go/graphql"
 	"net/http"
 )
@@ -24,7 +24,17 @@ type gqlServerImp struct {
 }
 
 func (server *gqlServerImp) Start() {
-	portStr := fmt.Sprintf(":%d", service.SettingsObj().APISettings().HttpPort())
+	// Init services
+	utils.PicnicLog_INFO("Starting Picnic Web Server")
+	utils.PicnicLog_INFO("Initiating services...")
+	if err := service.Instance().Init(); err != nil {
+		utils.PicnicLog_ERROR("Error starting start the server...")
+		utils.PicnicLog_ERROR(err.Error())
+		utils.PicnicLog_INFO("Server stopped...")
+	}
+	utils.PicnicLog_INFO("Services initiated :)")
+
+	portStr := fmt.Sprintf(":%d", settings.SettingsObj().APISettings().HttpPort())
 	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
 	if err != nil {
 		utils.PicnicLog_ERROR(err.Error())
@@ -32,8 +42,8 @@ func (server *gqlServerImp) Start() {
 	}
 	http.Handle("/graphiql", graphiqlHandler)
 	http.Handle("/graphql", server.getGqlHandler())
-	logger.Info("Starting Picnic Web Server")
-	logger.Info(service.SettingsObj().ToString())
+
+	utils.PicnicLog_INFO(settings.SettingsObj().ToString())
 	http.ListenAndServe(portStr, nil)
 }
 

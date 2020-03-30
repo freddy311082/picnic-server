@@ -31,7 +31,7 @@ the offset.`,
 				startPos, _ = p.Args["start_pos"].(int)
 				offset, _ = p.Args["offset"].(int)
 
-				return service.ServiceInstance().Users(startPos, offset)
+				return service.Instance().Users(startPos, offset)
 			},
 		},
 	},

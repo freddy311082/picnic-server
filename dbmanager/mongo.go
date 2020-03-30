@@ -3,6 +3,7 @@ package dbmanager
 import (
 	"context"
 	"fmt"
+	"github.com/freddy311082/picnic-server/settings"
 
 	"github.com/freddy311082/picnic-server/model"
 	"github.com/freddy311082/picnic-server/utils"
@@ -44,22 +45,24 @@ func (dbManager *mongodbManagerImp) IsOpen() bool {
 }
 
 func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.User, error) {
-	user, err := dbManager.GetUser(user.Email)
+	findUser, err := dbManager.GetUser(user.Email)
 
 	if err != nil {
-		return nil, err
+		utils.PicnicLog_INFO(err.Error())
 	}
 
-	if user == nil {
+	if findUser == nil { // user not found
 		collection := dbManager.db.Collection(utils.USERS_COLLECTION)
 		if result, err := collection.InsertOne(context.TODO(), user); err != nil {
-			return nil, err
+			return nil, utils.ErrorAndLog(err.Error())
 		} else {
 			user.ID = result.InsertedID.(string)
 		}
+
+		return user, nil
 	}
 
-	return user, nil
+	return nil, utils.ErrorAndLog(fmt.Sprintf("User %s already exists.", user.Email))
 }
 
 func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
@@ -68,9 +71,18 @@ func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
 		"email": email,
 	}
 	user := &model.User{}
-	err := collection.FindOne(context.TODO(), query).Decode(user)
+	result := collection.FindOne(context.TODO(), query)
 
-	return user, err
+	if result.Err() != nil {
+		utils.PicnicLog_ERROR(result.Err().Error())
+		return nil, result.Err()
+	}
+
+	if err := result.Decode(user); err != nil {
+		return nil, utils.ErrorAndLog(err.Error())
+	}
+
+	return user, nil
 }
 
 func (dbManager *mongodbManagerImp) Open() error {
@@ -79,6 +91,7 @@ func (dbManager *mongodbManagerImp) Open() error {
 
 	if err == nil {
 		dbManager.isOpen = true
+		dbManager.db = dbManager.client.Database("picnic")
 	}
 
 	return err
@@ -122,11 +135,21 @@ func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.U
 	return users, nil
 }
 
-func createMongoDbManager(connectionString string) *mongodbManagerImp {
+func createMongoDbManagerForTesting(connectionString string) *mongodbManagerImp {
 	manager := &mongodbManagerImp{
 		isOpen:        false,
 		client:        nil,
 		clientOptions: options.Client().ApplyURI(connectionString),
+	}
+
+	return manager
+}
+
+func createMongoDbManager() DBManager {
+	manager := &mongodbManagerImp{
+		isOpen:        false,
+		client:        nil,
+		clientOptions: options.Client().ApplyURI(settings.SettingsObj().DBSettingsValues().ConnectionString()),
 	}
 
 	return manager

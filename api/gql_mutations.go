@@ -1,6 +1,10 @@
 package api
 
-import "github.com/graphql-go/graphql"
+import (
+	"github.com/freddy311082/picnic-server/model"
+	"github.com/freddy311082/picnic-server/service"
+	"github.com/graphql-go/graphql"
+)
 
 var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootMutations",
@@ -12,7 +16,7 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 					Type:        graphql.String,
 					Description: "User Name",
 				},
-				"lastname": &graphql.ArgumentConfig{
+				"lastName": &graphql.ArgumentConfig{
 					Type:        graphql.String,
 					Description: "User Last Name",
 				},
@@ -22,7 +26,13 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-				return nil, nil
+				user, err := service.Instance().RegisterUser(&model.User{
+					Name:     p.Args["name"].(string),
+					LastName: p.Args["lastName"].(string),
+					Email:    p.Args["email"].(string),
+				})
+
+				return user, err
 			},
 			Description: "Register a new user in the system by email. If the user already exists and error will" +
 				" be raised.",

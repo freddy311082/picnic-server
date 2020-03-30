@@ -7,10 +7,10 @@ import (
 )
 
 type mdbUserModel struct {
-	id       string
-	name     string
-	lastName string
-	email    string
+	id       string `json:"_id"`
+	name     string `json:"name"`
+	lastName string `json:"last_name"`
+	email    string `json:"email"`
 }
 
 func (dbUser *mdbUserModel) initFromModel(user *model.User) error {
