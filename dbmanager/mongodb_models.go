@@ -12,7 +12,7 @@ type mdbId struct {
 }
 
 func (mdbIdObj *mdbId) ToString() string {
-	return mdbIdObj.ToString()
+	return mdbIdObj.id.Hex()
 }
 
 type mdbUserModel struct {
