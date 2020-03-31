@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/freddy311082/picnic-server/dbmanager"
 	"github.com/freddy311082/picnic-server/model"
-	"github.com/freddy311082/picnic-server/utils"
+	"github.com/google/logger"
 )
 
 type Service interface {
@@ -18,7 +18,7 @@ type serviceImp struct {
 
 func (service *serviceImp) Init() error {
 	if err := serviceInstance.dbManager.Open(); err != nil {
-		utils.PicnicLog_ERROR(err.Error())
+		logger.Error(err.Error())
 		panic(err.Error())
 		return err
 	}

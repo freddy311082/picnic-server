@@ -137,7 +137,7 @@ func GqlSchema() graphql.Schema {
 		},
 		"job": &graphql.Field{
 			Type:        jobType,
-			Description: "Get Jobs by ID",
+			Description: "Get Jobs by _ID",
 			Args: graphql.FieldConfigArgument{
 				"id": &graphql.ArgumentConfig{
 					Type: graphql.Int,
@@ -170,7 +170,7 @@ func gqlSchema(queryJobs func() []Job) graphql.Schema {
 		},
 		"job": &graphql.Field{
 			Type:        jobType,
-			Description: "Get Jobs by ID",
+			Description: "Get Jobs by _ID",
 			Args: graphql.FieldConfigArgument{
 				"id": &graphql.ArgumentConfig{
 					Type: graphql.Int,

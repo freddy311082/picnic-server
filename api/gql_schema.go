@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/freddy311082/picnic-server/utils"
+	"github.com/google/logger"
 	"github.com/graphql-go/graphql"
 )
 
@@ -12,7 +12,7 @@ func GetSchema() (*graphql.Schema, error) {
 	})
 
 	if err != nil {
-		utils.PicnicLog_ERROR(err.Error())
+		logger.Error(err.Error())
 		return nil, err
 	}
 

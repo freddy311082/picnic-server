@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/freddy311082/picnic-server/service"
 	"github.com/freddy311082/picnic-server/settings"
-	"github.com/freddy311082/picnic-server/utils"
 	"github.com/friendsofgo/graphiql"
+	"github.com/google/logger"
 	"github.com/graphql-go/graphql"
 	"net/http"
 )
@@ -25,25 +25,25 @@ type gqlServerImp struct {
 
 func (server *gqlServerImp) Start() {
 	// Init services
-	utils.PicnicLog_INFO("Starting Picnic Web Server")
-	utils.PicnicLog_INFO("Initiating services...")
+	logger.Info("Starting Picnic Web Server")
+	logger.Info("Initiating services...")
 	if err := service.Instance().Init(); err != nil {
-		utils.PicnicLog_ERROR("Error starting start the server...")
-		utils.PicnicLog_ERROR(err.Error())
-		utils.PicnicLog_INFO("Server stopped...")
+		logger.Error("Error starting start the server...")
+		logger.Error(err.Error())
+		logger.Info("Server stopped...")
 	}
-	utils.PicnicLog_INFO("Services initiated :)")
+	logger.Info("Services initiated :)")
 
 	portStr := fmt.Sprintf(":%d", settings.SettingsObj().APISettings().HttpPort())
 	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
 	if err != nil {
-		utils.PicnicLog_ERROR(err.Error())
+		logger.Error(err.Error())
 		return
 	}
 	http.Handle("/graphiql", graphiqlHandler)
 	http.Handle("/graphql", server.getGqlHandler())
 
-	utils.PicnicLog_INFO(settings.SettingsObj().ToString())
+	logger.Info(settings.SettingsObj().ToString())
 	http.ListenAndServe(portStr, nil)
 }
 
@@ -68,7 +68,7 @@ func (server *gqlServerImp) decodeRequest(request *http.Request, response http.R
 	var rBody reqBody
 	if err := json.NewDecoder(request.Body).Decode(&rBody); err != nil {
 		const msg = "Error parsing JSON request body"
-		utils.PicnicLog_ERROR(msg)
+		logger.Error(msg)
 		http.Error(response, msg, 400)
 	}
 	return rBody

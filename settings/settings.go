@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/freddy311082/picnic-server/utils"
+	"github.com/google/logger"
 	"io/ioutil"
 	"os"
 	"path"
@@ -73,7 +74,7 @@ func (apiSettings *apiSettingsImp) GraphiQL() bool {
 func (apiSettings *apiSettingsImp) loadData(data map[string]interface{}) error {
 	if apiMap, ok := data[utils.WEBSERVER_JSON_KEY].(map[string]interface{}); !ok {
 		const msg = "invalid settings.json. Error or missing API config"
-		utils.PicnicLog_ERROR(msg)
+		logger.Error(msg)
 		return errors.New(msg)
 	} else {
 		apiSettings.allowGraphiQL = apiMap[utils.GRAPHIQL_JSON_KEY].(bool)
@@ -170,8 +171,8 @@ func (dbSettings *dbSettingsImp) validate() error {
 		len(dbSettings._user) == 0) &&
 		len(dbSettings._password) == 0 {
 		const msg = "invalid database settings values. Please check and rerun the server again"
-		utils.PicnicLog_ERROR(msg)
-		utils.PicnicLog_INFO(fmt.Sprintf(`host: %s
+		logger.Error(msg)
+		logger.Info(fmt.Sprintf(`host: %s
 port: %d
 dbname: %s
 user: %s
@@ -228,7 +229,7 @@ func (settings *settingsImp) fileContent() ([]byte, error) {
 	var content, err = ioutil.ReadFile(filename)
 	if err != nil {
 		msg := fmt.Sprintf("Error reading file %s", filename)
-		utils.PicnicLog_ERROR(msg)
+		logger.Error(msg)
 		return nil, err
 	}
 
@@ -246,14 +247,14 @@ func (settings *settingsImp) load() error {
 func (settings *settingsImp) loadContent(content []byte) error {
 	if content == nil || len(content) == 0 {
 		msg := "invalid setting.json file content"
-		utils.PicnicLog_ERROR(msg)
+		logger.Error(msg)
 		return errors.New(msg)
 	} else {
 
 		var data map[string]interface{}
 		if err := json.Unmarshal(content, &data); err != nil {
 			const msg = "error parsing content of settings.json"
-			utils.PicnicLog_ERROR(msg)
+			logger.Error(msg)
 			return errors.New(msg)
 		}
 		if err := settings.loadDbSettings(data); err != nil {

@@ -32,7 +32,11 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 					Email:    p.Args["email"].(string),
 				})
 
-				return user, err
+				if err != nil {
+					return nil, err
+				}
+
+				return gqlUserFromModel(user), err
 			},
 			Description: "Register a new user in the system by email. If the user already exists and error will" +
 				" be raised.",

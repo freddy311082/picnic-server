@@ -1,7 +1,11 @@
 package model
 
+type ID interface {
+	ToString() string
+}
+
 type User struct {
-	ID       string
+	Id       ID
 	Name     string
 	LastName string
 	Email    string

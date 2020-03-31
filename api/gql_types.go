@@ -1,19 +1,22 @@
 package api
 
-import "github.com/graphql-go/graphql"
+import (
+	"github.com/freddy311082/picnic-server/model"
+	"github.com/graphql-go/graphql"
+)
 
 var UserType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "User",
 	Fields: graphql.Fields{
 		"id": &graphql.Field{
-			Type: graphql.String,
+			Type: graphql.ID,
 		},
 
 		"name": &graphql.Field{
 			Type: graphql.String,
 		},
 
-		"last_name": &graphql.Field{
+		"lastName": &graphql.Field{
 			Type: graphql.String,
 		},
 
@@ -23,3 +26,31 @@ var UserType = graphql.NewObject(graphql.ObjectConfig{
 	},
 	Description: "User object type definition.",
 })
+
+type gqlUserResponse struct {
+	ID       string
+	Name     string
+	LastName string
+	Email    string
+}
+
+type gqlUserListResponse []*gqlUserResponse
+
+func gqlUserFromModel(user *model.User) *gqlUserResponse {
+	return &gqlUserResponse{
+		ID:       user.Id.ToString(),
+		Name:     user.Name,
+		LastName: user.LastName,
+		Email:    user.Email,
+	}
+}
+
+func gqlUserListFromModel(userList model.UserList) gqlUserListResponse {
+	var gqlUserList gqlUserListResponse
+
+	for _, user := range userList {
+		gqlUserList = append(gqlUserList, gqlUserFromModel(&user))
+	}
+
+	return gqlUserList
+}

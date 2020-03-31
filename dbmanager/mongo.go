@@ -2,8 +2,11 @@ package dbmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/freddy311082/picnic-server/settings"
+	"github.com/google/logger"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/freddy311082/picnic-server/model"
 	"github.com/freddy311082/picnic-server/utils"
@@ -17,15 +20,20 @@ type mongodbManagerImp struct {
 	client        *mongo.Client
 	clientOptions *options.ClientOptions
 	db            *mongo.Database
+	initiated     bool
 }
 
 func (dbManager *mongodbManagerImp) init() {
 	// users collection
-	usersCollection := dbManager.db.Collection(utils.USERS_COLLECTION)
-	usersCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
-		Keys:    bson.M{"email": 1},
-		Options: options.Index().SetUnique(true),
-	})
+	if !dbManager.initiated {
+		usersCollection := dbManager.db.Collection(utils.USERS_COLLECTION)
+		usersCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
+			Keys:    bson.M{"email": 1},
+			Options: options.Index().SetUnique(true),
+		})
+
+		dbManager.initiated = true
+	}
 }
 
 func (dbManager *mongodbManagerImp) Close() error {
@@ -48,21 +56,30 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 	findUser, err := dbManager.GetUser(user.Email)
 
 	if err != nil {
-		utils.PicnicLog_INFO(err.Error())
+		logger.Info(err.Error())
 	}
 
 	if findUser == nil { // user not found
 		collection := dbManager.db.Collection(utils.USERS_COLLECTION)
-		if result, err := collection.InsertOne(context.TODO(), user); err != nil {
-			return nil, utils.ErrorAndLog(err.Error())
+
+		userDB := mdbUserModel{}
+		userDB.initFromModel(user)
+		userDB.generateNewID()
+		logger.Info(userDB.ID.String())
+
+		if result, err := collection.InsertOne(context.TODO(), userDB); err != nil {
+			logger.Error(err.Error())
+			return nil, err
 		} else {
-			user.ID = result.InsertedID.(string)
+			user.Id = &mdbId{id: result.InsertedID.(primitive.ObjectID)}
 		}
 
 		return user, nil
 	}
 
-	return nil, utils.ErrorAndLog(fmt.Sprintf("User %s already exists.", user.Email))
+	msg := fmt.Sprintf("User %s already exists.", user.Email)
+	logger.Error(msg)
+	return nil, errors.New(msg)
 }
 
 func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
@@ -74,12 +91,13 @@ func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
 	result := collection.FindOne(context.TODO(), query)
 
 	if result.Err() != nil {
-		utils.PicnicLog_ERROR(result.Err().Error())
+		logger.Error(result.Err().Error())
 		return nil, result.Err()
 	}
 
 	if err := result.Decode(user); err != nil {
-		return nil, utils.ErrorAndLog(err.Error())
+		logger.Error(err.Error())
+		return nil, err
 	}
 
 	return user, nil
@@ -92,6 +110,7 @@ func (dbManager *mongodbManagerImp) Open() error {
 	if err == nil {
 		dbManager.isOpen = true
 		dbManager.db = dbManager.client.Database("picnic")
+		dbManager.init()
 	}
 
 	return err
@@ -99,7 +118,9 @@ func (dbManager *mongodbManagerImp) Open() error {
 
 func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.UserList, error) {
 	if startPosition < 0 {
-		return nil, utils.ErrorAndLog("start position cannot be zero or a negative number")
+		const msg = "start position cannot be zero or a negative number"
+		logger.Error(msg)
+		return nil, errors.New(msg)
 	}
 
 	findOptions := options.Find()
@@ -113,19 +134,20 @@ func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.U
 	}
 
 	collection := dbManager.db.Collection(utils.USERS_COLLECTION)
-	cursor, err := collection.Find(context.TODO(), nil, findOptions)
+	cursor, err := collection.Find(context.TODO(), bson.D{}, findOptions)
 
 	if err != nil {
-		utils.PicnicLog_ERROR(fmt.Sprintf("%s", err))
+		logger.Error(fmt.Sprintf("%s", err))
 		return nil, err
 	}
 
 	var users model.UserList
-	var userDb *mdbUserModel
+	userDb := &mdbUserModel{}
 
 	for cursor.Next(context.TODO()) {
-		if err := cursor.Decode(userDb); err != nil {
-			return nil, utils.ErrorAndLog(err.Error())
+		if err := cursor.Decode(&userDb); err != nil {
+			logger.Error(err.Error())
+			return nil, err
 		}
 
 		user := userDb.toModel()
@@ -140,6 +162,7 @@ func createMongoDbManagerForTesting(connectionString string) *mongodbManagerImp 
 		isOpen:        false,
 		client:        nil,
 		clientOptions: options.Client().ApplyURI(connectionString),
+		initiated:     false,
 	}
 
 	return manager
@@ -150,6 +173,7 @@ func createMongoDbManager() DBManager {
 		isOpen:        false,
 		client:        nil,
 		clientOptions: options.Client().ApplyURI(settings.SettingsObj().DBSettingsValues().ConnectionString()),
+		initiated:     false,
 	}
 
 	return manager
