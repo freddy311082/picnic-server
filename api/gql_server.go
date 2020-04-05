@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"github.com/freddy311082/picnic-server/service"
 	"github.com/freddy311082/picnic-server/settings"
+	"github.com/freddy311082/picnic-server/utils"
 	"github.com/friendsofgo/graphiql"
 	"github.com/go-chi/chi"
-	"github.com/google/logger"
 	"github.com/graphql-go/graphql"
 	"github.com/rs/cors"
-	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -28,20 +26,22 @@ type gqlServerImp struct {
 }
 
 func (server *gqlServerImp) Start() {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
 	// Init services
-	logger.Info("Starting Picnic Web Server")
-	logger.Info("Initiating services...")
+	loggerObj.Info("Starting Picnic Web Server")
+	loggerObj.Info("Initiating services...")
 	if err := service.Instance().Init(); err != nil {
-		logger.Error("Error starting start the server...")
-		logger.Error(err.Error())
-		logger.Info("Server stopped...")
+		loggerObj.Error("Error starting start the server...")
+		loggerObj.Error(err.Error())
+		loggerObj.Info("Server stopped...")
 	}
-	logger.Info("Services initiated :)")
+	loggerObj.Info("Services initiated :)")
 
 	portStr := fmt.Sprintf(":%d", settings.SettingsObj().APISettings().HttpPort())
 	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
 	if err != nil {
-		logger.Error(err.Error())
+		loggerObj.Error(err.Error())
 		return
 	}
 	router := chi.NewRouter()
@@ -54,16 +54,17 @@ func (server *gqlServerImp) Start() {
 	router.Handle("/graphiql", graphiqlHandler)
 	router.Handle("/graphql", server.getGqlHandler())
 
-	logger.Info(settings.SettingsObj().ToString())
+	loggerObj.Info(settings.SettingsObj().ToString())
 	http.ListenAndServe(portStr, router)
 }
 
 func (server *gqlServerImp) getGqlHandler() http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		logger.Init("PICNIC", true, false, ioutil.Discard)
-		logger.SetFlags(log.LstdFlags | log.Lshortfile)
+		loggerObj := utils.LoggerObj()
 		if request.Body == nil {
-			http.Error(response, "No query data.", 400)
+			const msg = "Error 400: No query data."
+			loggerObj.Error(msg)
+			http.Error(response, msg, 400)
 			return
 		}
 
@@ -78,11 +79,13 @@ func (server *gqlServerImp) getGqlHandler() http.Handler {
 }
 
 func (server *gqlServerImp) decodeRequest(request *http.Request, response http.ResponseWriter) reqBody {
-
 	var rBody reqBody
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
 	if err := json.NewDecoder(request.Body).Decode(&rBody); err != nil {
 		const msg = "Error parsing JSON request body"
-		logger.Error(msg)
+		loggerObj.Error(msg)
 		http.Error(response, msg, 400)
 	}
 	return rBody

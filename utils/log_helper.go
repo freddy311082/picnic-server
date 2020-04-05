@@ -6,7 +6,8 @@ import (
 	"log"
 )
 
-func InitLogger() {
-	logger.Init("PICNIC", true, false, ioutil.Discard)
+func LoggerObj() *logger.Logger {
 	logger.SetFlags(log.LstdFlags | log.Lshortfile)
+	return logger.Init("PICNIC", true, false, ioutil.Discard)
+
 }

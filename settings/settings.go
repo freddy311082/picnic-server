@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/freddy311082/picnic-server/utils"
-	"github.com/google/logger"
 	"io/ioutil"
 	"os"
 	"path"
@@ -74,7 +73,7 @@ func (apiSettings *apiSettingsImp) GraphiQL() bool {
 func (apiSettings *apiSettingsImp) loadData(data map[string]interface{}) error {
 	if apiMap, ok := data[utils.WEBSERVER_JSON_KEY].(map[string]interface{}); !ok {
 		const msg = "invalid settings.json. Error or missing API config"
-		logger.Error(msg)
+		utils.LoggerObj().Error(msg)
 		return errors.New(msg)
 	} else {
 		apiSettings.allowGraphiQL = apiMap[utils.GRAPHIQL_JSON_KEY].(bool)
@@ -170,9 +169,10 @@ func (dbSettings *dbSettingsImp) validate() error {
 		len(dbSettings._dbName) == 0 &&
 		len(dbSettings._user) == 0) &&
 		len(dbSettings._password) == 0 {
+		loggerObj := utils.LoggerObj()
 		const msg = "invalid database settings values. Please check and rerun the server again"
-		logger.Error(msg)
-		logger.Info(fmt.Sprintf(`host: %s
+		loggerObj.Error(msg)
+		loggerObj.Info(fmt.Sprintf(`host: %s
 port: %d
 dbname: %s
 user: %s
@@ -227,9 +227,13 @@ func (settings *settingsImp) fileContent() ([]byte, error) {
 
 	filename := settings.filename()
 	var content, err = ioutil.ReadFile(filename)
+
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
 	if err != nil {
 		msg := fmt.Sprintf("Error reading file %s", filename)
-		logger.Error(msg)
+		loggerObj.Error(msg)
 		return nil, err
 	}
 
@@ -245,16 +249,19 @@ func (settings *settingsImp) load() error {
 }
 
 func (settings *settingsImp) loadContent(content []byte) error {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
 	if content == nil || len(content) == 0 {
 		msg := "invalid setting.json file content"
-		logger.Error(msg)
+		loggerObj.Error(msg)
 		return errors.New(msg)
 	} else {
 
 		var data map[string]interface{}
 		if err := json.Unmarshal(content, &data); err != nil {
 			const msg = "error parsing content of settings.json"
-			logger.Error(msg)
+			loggerObj.Error(msg)
 			return errors.New(msg)
 		}
 		if err := settings.loadDbSettings(data); err != nil {

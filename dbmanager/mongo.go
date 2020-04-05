@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/freddy311082/picnic-server/settings"
-	"github.com/google/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/freddy311082/picnic-server/model"
@@ -53,10 +52,12 @@ func (dbManager *mongodbManagerImp) IsOpen() bool {
 }
 
 func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.User, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
 	findUser, err := dbManager.GetUser(user.Email)
 
 	if err != nil {
-		logger.Info(err.Error())
+		loggerObj.Info(err.Error())
 	}
 
 	if findUser == nil { // user not found
@@ -65,10 +66,10 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 		userDB := mdbUserModel{}
 		userDB.initFromModel(user)
 		userDB.generateNewID()
-		logger.Info(userDB.ID.String())
+		loggerObj.Info(userDB.ID.String())
 
 		if result, err := collection.InsertOne(context.TODO(), userDB); err != nil {
-			logger.Error(err.Error())
+			loggerObj.Error(err.Error())
 			return nil, err
 		} else {
 			user.Id = &mdbId{id: result.InsertedID.(primitive.ObjectID)}
@@ -78,11 +79,14 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 	}
 
 	msg := fmt.Sprintf("User %s already exists.", user.Email)
-	logger.Error(msg)
+	loggerObj.Error(msg)
 	return nil, errors.New(msg)
 }
 
 func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
 	collection := dbManager.db.Collection(utils.USERS_COLLECTION)
 	query := &bson.M{
 		"email": email,
@@ -91,12 +95,12 @@ func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
 	result := collection.FindOne(context.TODO(), query)
 
 	if result.Err() != nil {
-		logger.Error(result.Err().Error())
+		loggerObj.Error(result.Err().Error())
 		return nil, result.Err()
 	}
 
 	if err := result.Decode(user); err != nil {
-		logger.Error(err.Error())
+		loggerObj.Error(err.Error())
 		return nil, err
 	}
 
@@ -117,9 +121,12 @@ func (dbManager *mongodbManagerImp) Open() error {
 }
 
 func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.UserList, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
 	if startPosition < 0 {
 		const msg = "start position cannot be zero or a negative number"
-		logger.Error(msg)
+		loggerObj.Error(msg)
 		return nil, errors.New(msg)
 	}
 
@@ -137,7 +144,7 @@ func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.U
 	cursor, err := collection.Find(context.TODO(), bson.D{}, findOptions)
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("%s", err))
+		loggerObj.Error(fmt.Sprintf("%s", err))
 		return nil, err
 	}
 
@@ -146,7 +153,7 @@ func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.U
 
 	for cursor.Next(context.TODO()) {
 		if err := cursor.Decode(&userDb); err != nil {
-			logger.Error(err.Error())
+			loggerObj.Error(err.Error())
 			return nil, err
 		}
 

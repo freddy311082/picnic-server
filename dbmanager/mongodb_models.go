@@ -3,7 +3,7 @@ package dbmanager
 import (
 	"errors"
 	"github.com/freddy311082/picnic-server/model"
-	"github.com/google/logger"
+	"github.com/freddy311082/picnic-server/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -29,7 +29,10 @@ func (dbUser *mdbUserModel) generateNewID() {
 func (dbUser *mdbUserModel) initFromModel(user *model.User) error {
 	if user == nil {
 		const msg = "invalid userModel. Cannot initiate MongoDB user model from NULL"
-		logger.Error(msg)
+		loggerObj := utils.LoggerObj()
+		defer loggerObj.Close()
+		loggerObj.Error(msg)
+
 		return errors.New(msg)
 	}
 
