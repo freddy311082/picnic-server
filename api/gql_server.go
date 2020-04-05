@@ -14,7 +14,9 @@ import (
 )
 
 type reqBody struct {
-	Query string `json:"query"`
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables"`
+	OperationName string                 `json:"operationName"`
 }
 
 type WebServer interface {
@@ -69,7 +71,7 @@ func (server *gqlServerImp) getGqlHandler() http.Handler {
 		}
 
 		rBody := server.decodeRequest(request, response)
-		if result, err := server.processQuery(rBody.Query); err != nil {
+		if result, err := server.processQuery(rBody); err != nil {
 			http.Error(response, err.Error(), 400)
 		} else {
 			fmt.Fprintf(response, "%s", result)
@@ -91,7 +93,7 @@ func (server *gqlServerImp) decodeRequest(request *http.Request, response http.R
 	return rBody
 }
 
-func (server *gqlServerImp) processQuery(query string) (string, error) {
+func (server *gqlServerImp) processQuery(body reqBody) (string, error) {
 	schema, err := GetSchema()
 
 	if err != nil {
@@ -99,8 +101,10 @@ func (server *gqlServerImp) processQuery(query string) (string, error) {
 	}
 
 	gqlParams := graphql.Params{
-		Schema:        *schema,
-		RequestString: query,
+		Schema:         *schema,
+		RequestString:  body.Query,
+		VariableValues: body.Variables,
+		OperationName:  body.OperationName,
 	}
 
 	result := graphql.Do(gqlParams)
