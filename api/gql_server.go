@@ -6,8 +6,12 @@ import (
 	"github.com/freddy311082/picnic-server/service"
 	"github.com/freddy311082/picnic-server/settings"
 	"github.com/friendsofgo/graphiql"
+	"github.com/go-chi/chi"
 	"github.com/google/logger"
 	"github.com/graphql-go/graphql"
+	"github.com/rs/cors"
+	"io/ioutil"
+	"log"
 	"net/http"
 )
 
@@ -40,15 +44,24 @@ func (server *gqlServerImp) Start() {
 		logger.Error(err.Error())
 		return
 	}
-	http.Handle("/graphiql", graphiqlHandler)
-	http.Handle("/graphql", server.getGqlHandler())
+	router := chi.NewRouter()
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		Debug:            true,
+	}).Handler)
+
+	router.Handle("/graphiql", graphiqlHandler)
+	router.Handle("/graphql", server.getGqlHandler())
 
 	logger.Info(settings.SettingsObj().ToString())
-	http.ListenAndServe(portStr, nil)
+	http.ListenAndServe(portStr, router)
 }
 
 func (server *gqlServerImp) getGqlHandler() http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		logger.Init("PICNIC", true, false, ioutil.Discard)
+		logger.SetFlags(log.LstdFlags | log.Lshortfile)
 		if request.Body == nil {
 			http.Error(response, "No query data.", 400)
 			return
@@ -65,6 +78,7 @@ func (server *gqlServerImp) getGqlHandler() http.Handler {
 }
 
 func (server *gqlServerImp) decodeRequest(request *http.Request, response http.ResponseWriter) reqBody {
+
 	var rBody reqBody
 	if err := json.NewDecoder(request.Body).Decode(&rBody); err != nil {
 		const msg = "Error parsing JSON request body"

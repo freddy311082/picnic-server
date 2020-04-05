@@ -10,6 +10,14 @@
   version = "v0.2.2"
 
 [[projects]]
+  digest = "1:065712c2023860afaa947828b6bdc3b569ef8b578cb279ed24f2e21f806df649"
+  name = "github.com/go-chi/chi"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "183768ed5df7d0b039500727c380bfbaf9229c81"
+  version = "v4.1.0"
+
+[[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
   name = "github.com/go-stack/stack"
   packages = ["."]
@@ -32,14 +40,6 @@
   pruneopts = "UT"
   revision = "7047ffcb7339f3f59be32de74a92217cb17cb40c"
   version = "v1.0.1"
-
-[[projects]]
-  digest = "1:582b704bebaa06b48c29b0cec224a6058a09c86883aaddabde889cd1a5f73e1b"
-  name = "github.com/google/uuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
-  version = "v1.1.1"
 
 [[projects]]
   digest = "1:01a3bf7bc37c96547897d253f8437c89cd8e80ea0211ff5f440fbc19f44cd14e"
@@ -82,6 +82,14 @@
   pruneopts = "UT"
   revision = "614d223910a179a466c1767a985424175c39b465"
   version = "v0.9.1"
+
+[[projects]]
+  digest = "1:c5dfe46811af7e2eff7c11fc84b6c841520338613c056f659f262d5a4fb42fa8"
+  name = "github.com/rs/cors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "db0fe48135e83b5812a5a31be0eea66984b1b521"
+  version = "v1.7.0"
 
 [[projects]]
   branch = "master"
@@ -187,10 +195,12 @@
   analyzer-version = 1
   input-imports = [
     "github.com/friendsofgo/graphiql",
+    "github.com/go-chi/chi",
     "github.com/google/logger",
-    "github.com/google/uuid",
     "github.com/graphql-go/graphql",
+    "github.com/rs/cors",
     "go.mongodb.org/mongo-driver/bson",
+    "go.mongodb.org/mongo-driver/bson/primitive",
     "go.mongodb.org/mongo-driver/mongo",
     "go.mongodb.org/mongo-driver/mongo/options",
   ]
