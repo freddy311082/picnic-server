@@ -42,10 +42,12 @@ func (server *gqlServerImp) Start() {
 
 	portStr := fmt.Sprintf(":%d", settings.SettingsObj().APISettings().HttpPort())
 	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
+
 	if err != nil {
 		loggerObj.Error(err.Error())
 		return
 	}
+
 	router := chi.NewRouter()
 	router.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -53,6 +55,7 @@ func (server *gqlServerImp) Start() {
 		Debug:            true,
 	}).Handler)
 
+	loggerObj.Info("System settings.....")
 	router.Handle("/graphiql", graphiqlHandler)
 	router.Handle("/graphql", server.getGqlHandler())
 

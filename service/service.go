@@ -18,6 +18,7 @@ type serviceImp struct {
 
 func (service *serviceImp) Init() error {
 	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
 	if err := serviceInstance.dbManager.Open(); err != nil {
 		loggerObj.Error(err.Error())
 		panic(err.Error())
