@@ -22,12 +22,89 @@ type mongodbManagerImp struct {
 	initiated     bool
 }
 
+func (dbManager *mongodbManagerImp) collection(name string) *mongo.Collection {
+	return dbManager.db.Collection(name)
+}
+
+func (dbManager *mongodbManagerImp) AllProjects(startPosition, offset int) (model.ProjectList, error) {
+	panic("implement me")
+}
+
+func (dbManager *mongodbManagerImp) CreateProject(project *model.Project) (*model.Project, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	projectDb := &mdbProjectModel{}
+	if err := projectDb.initFromModel(project); err != nil {
+		return nil, err
+	}
+
+	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+	if result, err := collection.InsertOne(context.TODO(), projectDb); err != nil {
+		loggerObj.Error(err.Error())
+		return nil, err
+	} else {
+		project.ID = &mdbId{id: result.InsertedID.(primitive.ObjectID)}
+	}
+
+	return project, nil
+}
+
+func (dbManager *mongodbManagerImp) GetProject(projectId model.ID) (*model.Project, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	dbId, err := primitive.ObjectIDFromHex(projectId.ToString())
+	if err != nil {
+		loggerObj.Error(err)
+		return nil, err
+	}
+
+	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+
+	result := collection.FindOne(context.TODO(), bson.M{utils.PROJECT_ID_FIELD: dbId})
+	return dbManager.decodeBsonIntoProjectModel(result)
+}
+
+func (dbManager *mongodbManagerImp) decodeBsonIntoProjectModel(result *mongo.SingleResult) (*model.Project, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if result.Err() != nil {
+		loggerObj.Error(result.Err())
+		return nil, result.Err()
+	}
+
+	projectDb := &mdbProjectModel{}
+	if err := result.Decode(projectDb); err != nil {
+		loggerObj.Error(err)
+		return nil, err
+	}
+
+	project := projectDb.toModel()
+	if owner, err := dbManager.GetUserByID(&mdbId{id: projectDb.OwnerID}); err != nil {
+		return nil, err
+	} else {
+		project.Owner = owner
+	}
+
+	return project, nil
+}
+
+func (dbManager *mongodbManagerImp) UpdateProject(project *model.Project) (*model.Project, error) {
+	panic("implement me")
+}
+
 func (dbManager *mongodbManagerImp) init() {
 	// users collection
 	if !dbManager.initiated {
-		usersCollection := dbManager.db.Collection(utils.USERS_COLLECTION)
+		usersCollection := dbManager.collection(utils.USERS_COLLECTION)
 		usersCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
-			Keys:    bson.M{"email": 1},
+			Keys:    bson.M{utils.USER_EMAIL_FIELD: 1},
+			Options: options.Index().SetUnique(true),
+		})
+		usersCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
+			Keys:    bson.M{utils.PROJECT_NAME_FIELD: 1, utils.PROJECT_OWNER_ID_FIELD: 1},
 			Options: options.Index().SetUnique(true),
 		})
 
@@ -54,18 +131,18 @@ func (dbManager *mongodbManagerImp) IsOpen() bool {
 func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.User, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
-	findUser, err := dbManager.GetUser(user.Email)
+	findUser, err := dbManager.GetUserByEmail(user.Email)
 
 	if err != nil {
-		loggerObj.Info(err.Error())
+		loggerObj.Info(err)
 	}
 
 	if findUser == nil { // user not found
-		collection := dbManager.db.Collection(utils.USERS_COLLECTION)
+		collection := dbManager.collection(utils.USERS_COLLECTION)
 
 		userDB := mdbUserModel{}
 		userDB.initFromModel(user)
-		userDB.generateNewID()
+		userDB.ID = primitive.NewObjectID()
 		loggerObj.Info(userDB.ID.String())
 
 		if result, err := collection.InsertOne(context.TODO(), userDB); err != nil {
@@ -83,15 +160,15 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 	return nil, errors.New(msg)
 }
 
-func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
+func (dbManager *mongodbManagerImp) GetUserByEmail(email string) (*model.User, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
 
-	collection := dbManager.db.Collection(utils.USERS_COLLECTION)
+	collection := dbManager.collection(utils.USERS_COLLECTION)
 	query := &bson.M{
-		"email": email,
+		utils.USER_EMAIL_FIELD: email,
 	}
-	user := &model.User{}
+
 	result := collection.FindOne(context.TODO(), query)
 
 	if result.Err() != nil {
@@ -99,12 +176,33 @@ func (dbManager *mongodbManagerImp) GetUser(email string) (*model.User, error) {
 		return nil, result.Err()
 	}
 
-	if err := result.Decode(user); err != nil {
-		loggerObj.Error(err.Error())
+	return dbManager.decodeBsonIntoUserModel(result)
+}
+
+func (dbManager *mongodbManagerImp) GetUserByID(id model.ID) (*model.User, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	dbId, err := primitive.ObjectIDFromHex(id.ToString())
+
+	if err != nil {
+		loggerObj.Error(err)
 		return nil, err
 	}
 
-	return user, nil
+	collection := dbManager.collection(utils.USERS_COLLECTION)
+	result := collection.FindOne(context.TODO(), bson.M{utils.USER_ID_FIELD: dbId})
+
+	if result.Err() != nil {
+		loggerObj.Error(err)
+		return nil, err
+	}
+
+	return dbManager.decodeBsonIntoUserModel(result)
+}
+
+func (dbManager *mongodbManagerImp) decodeBsonIntoUserModel(result *mongo.SingleResult) (*model.User, error) {
+	panic("Must be implemented")
 }
 
 func (dbManager *mongodbManagerImp) Open() error {
@@ -113,7 +211,7 @@ func (dbManager *mongodbManagerImp) Open() error {
 
 	if err == nil {
 		dbManager.isOpen = true
-		dbManager.db = dbManager.client.Database("picnic")
+		dbManager.db = dbManager.client.Database(settings.SettingsObj().DBSettingsValues().DbName())
 		dbManager.init()
 	}
 
@@ -140,7 +238,7 @@ func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.U
 		findOptions.SetSkip(int64(startPosition))
 	}
 
-	collection := dbManager.db.Collection(utils.USERS_COLLECTION)
+	collection := dbManager.collection(utils.USERS_COLLECTION)
 	cursor, err := collection.Find(context.TODO(), bson.D{}, findOptions)
 
 	if err != nil {

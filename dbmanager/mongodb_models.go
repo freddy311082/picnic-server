@@ -22,13 +22,9 @@ type mdbUserModel struct {
 	Email    string             `bson:"email"`
 }
 
-func (dbUser *mdbUserModel) generateNewID() {
-	dbUser.ID = primitive.NewObjectID()
-}
-
 func (dbUser *mdbUserModel) initFromModel(user *model.User) error {
 	if user == nil {
-		const msg = "invalid userModel. Cannot initiate MongoDB user model from NULL"
+		const msg = "invalid userModel. Cannot initiate MongoDB user model from NULL object"
 		loggerObj := utils.LoggerObj()
 		defer loggerObj.Close()
 		loggerObj.Error(msg)
@@ -57,5 +53,47 @@ func (dbUser *mdbUserModel) toModel() *model.User {
 		LastName: dbUser.LastName,
 		Email:    dbUser.Email,
 		Token:    "",
+	}
+}
+
+type mdbProjectModel struct {
+	ID          primitive.ObjectID `bson:"_id"`
+	Name        string             `bson:"name"`
+	Description string             `bson:"description"`
+	CreatedAt   primitive.DateTime `bson:"created_at"`
+	OwnerID     primitive.ObjectID `bson:"owner_id"`
+}
+
+func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
+	if project == nil {
+		const msg = "invalid projectModel. Cannot initialize MongoDB project model from NULL object"
+		loggerObj := utils.LoggerObj()
+		defer loggerObj.Close()
+		loggerObj.Error(msg)
+		return errors.New(msg)
+	}
+
+	if project.ID != nil {
+		if objId, err := primitive.ObjectIDFromHex(project.ID.ToString()); err != nil {
+			dbProject.ID = objId
+		}
+	}
+
+	dbProject.Name = project.Name
+	dbProject.Description = project.Description
+	dbProject.CreatedAt = primitive.NewDateTimeFromTime(project.CreatedAt)
+
+	return nil
+}
+
+func (dbProject *mdbProjectModel) toModel() *model.Project {
+	return &model.Project{
+		ID:          &mdbId{id: dbProject.ID},
+		Name:        dbProject.Name,
+		Description: dbProject.Description,
+		CreatedAt:   dbProject.CreatedAt.Time(),
+		Owner:       nil,
+		Customer:    nil,
+		Fields:      nil,
 	}
 }

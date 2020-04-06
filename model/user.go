@@ -1,9 +1,5 @@
 package model
 
-type ID interface {
-	ToString() string
-}
-
 type User struct {
 	Id       ID
 	Name     string

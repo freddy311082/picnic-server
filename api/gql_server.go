@@ -19,6 +19,14 @@ type reqBody struct {
 	OperationName string                 `json:"operationName"`
 }
 
+func (req *reqBody) toString() string {
+	return fmt.Sprintf(`
+Query: %s
+Variables: %s
+OperationName: %s
+`, req.Query, fmt.Sprint(req.Variables), req.OperationName)
+}
+
 type WebServer interface {
 	Start()
 	Stop()
@@ -73,8 +81,11 @@ func (server *gqlServerImp) getGqlHandler() http.Handler {
 			return
 		}
 
+		loggerObj.Infof("Request from %s: ", request.RemoteAddr)
 		rBody := server.decodeRequest(request, response)
+		loggerObj.Info(rBody.toString())
 		if result, err := server.processQuery(rBody); err != nil {
+			loggerObj.Error("Error 400: ", err.Error())
 			http.Error(response, err.Error(), 400)
 		} else {
 			fmt.Fprintf(response, "%s", result)
