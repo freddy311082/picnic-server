@@ -12,7 +12,7 @@ type Project struct {
 	Fields      ProjectFieldList
 }
 
-type ProjectList []Project
+type ProjectList []*Project
 
 type ProjectField struct {
 	Name string

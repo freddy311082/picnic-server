@@ -27,7 +27,57 @@ func (dbManager *mongodbManagerImp) collection(name string) *mongo.Collection {
 }
 
 func (dbManager *mongodbManagerImp) AllProjects(startPosition, offset int) (model.ProjectList, error) {
-	panic("implement me")
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if startPosition < 0 {
+		const msg = "invalid param value, startPosition cannot be a negative number"
+		loggerObj.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	if offset < 0 {
+		const msg = "invalid param value, offset cannot be a negative number"
+		loggerObj.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	findOptions := options.Find()
+
+	if offset > 0 {
+		findOptions.SetLimit(int64(offset))
+	}
+
+	if startPosition > 0 {
+		findOptions.SetLimit(int64(startPosition))
+	}
+
+	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+	if cursor, err := collection.Find(context.TODO(), bson.D{}, findOptions); err != nil {
+		loggerObj.Error(cursor.Err())
+		return nil, cursor.Err()
+	} else {
+		var projects model.ProjectList
+
+		for cursor.Next(context.TODO()) {
+			projectDb := &mdbProjectModel{}
+			if err := cursor.Decode(&projectDb); err != nil {
+				loggerObj.Error(err)
+				return nil, err
+			}
+
+			if owner, err := dbManager.GetUserByID(&mdbId{id: projectDb.OwnerID}); err != nil {
+				loggerObj.Error(err)
+				return nil, err
+			} else {
+				project := projectDb.toModel()
+				project.Owner = owner
+				projects = append(projects, project)
+			}
+		}
+
+		return projects, nil
+	}
 }
 
 func (dbManager *mongodbManagerImp) CreateProject(project *model.Project) (*model.Project, error) {
@@ -92,7 +142,33 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoProjectModel(result *mongo.Sin
 }
 
 func (dbManager *mongodbManagerImp) UpdateProject(project *model.Project) (*model.Project, error) {
-	panic("implement me")
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if project == nil || project.ID == nil {
+		const msg = "invalid project. Neither project object nor project ID can be NULL"
+		loggerObj.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+	projectDb := &mdbProjectModel{}
+	projectDb.initFromModel(project)
+
+	if result, err := collection.UpdateOne(context.TODO(),
+		bson.D{{utils.PROJECT_ID_FIELD, primitive.ObjectIDFromHex(project.ID.ToString())}},
+		projectDb); err != nil {
+		loggerObj.Error(err)
+		return nil, err
+	} else {
+		if result.MatchedCount != 1 {
+			msg := fmt.Sprintf("Nothing to update. Project (%s) not found.", project.ID.ToString())
+			loggerObj.Errorf(msg)
+			return nil, errors.New(msg)
+		}
+
+		return project, nil
+	}
 }
 
 func (dbManager *mongodbManagerImp) init() {
@@ -202,7 +278,21 @@ func (dbManager *mongodbManagerImp) GetUserByID(id model.ID) (*model.User, error
 }
 
 func (dbManager *mongodbManagerImp) decodeBsonIntoUserModel(result *mongo.SingleResult) (*model.User, error) {
-	panic("Must be implemented")
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if result.Err() != nil {
+		loggerObj.Error(result.Err())
+		return nil, result.Err()
+	}
+
+	userDb := &mdbUserModel{}
+	if err := result.Decode(userDb); err != nil {
+		loggerObj.Error(err)
+		return nil, err
+	}
+
+	return userDb.toModel(), nil
 }
 
 func (dbManager *mongodbManagerImp) Open() error {
@@ -247,9 +337,9 @@ func (dbManager *mongodbManagerImp) AllUsers(startPosition, offset int) (model.U
 	}
 
 	var users model.UserList
-	userDb := &mdbUserModel{}
 
 	for cursor.Next(context.TODO()) {
+		userDb := &mdbUserModel{}
 		if err := cursor.Decode(&userDb); err != nil {
 			loggerObj.Error(err.Error())
 			return nil, err

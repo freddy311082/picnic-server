@@ -8,4 +8,4 @@ type User struct {
 	Token    string
 }
 
-type UserList []User
+type UserList []*User
