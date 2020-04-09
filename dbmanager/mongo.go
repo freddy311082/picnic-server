@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/freddy311082/picnic-server/settings"
+	"github.com/google/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/freddy311082/picnic-server/model"
@@ -22,6 +23,126 @@ type mongodbManagerImp struct {
 	initiated     bool
 }
 
+func (dbManager *mongodbManagerImp) DeleteProjects(ids []model.ID) error {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if mongoIds, err := dbManager.modelIDsToMongoIDs(ids, loggerObj); err != nil {
+		loggerObj.Error(err)
+		return err
+	} else {
+		collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+		if result, err := collection.DeleteMany(
+			context.TODO(),
+			bson.M{
+				"$in": mongoIds,
+			}); err != nil {
+			loggerObj.Error(err)
+			return err
+		} else {
+			loggerObj.Infof("Deleted %d projects.", result.DeletedCount)
+		}
+	}
+
+	return nil
+}
+
+func (dbManager *mongodbManagerImp) modelIDsToMongoIDs(
+	ids []model.ID,
+	loggerObj *logger.Logger) ([]primitive.ObjectID, error) {
+
+	mongoIds := []primitive.ObjectID{}
+
+	for _, modelId := range ids {
+		if id, err := primitive.ObjectIDFromHex(modelId.ToString()); err != nil {
+			loggerObj.Error(err)
+			return []primitive.ObjectID{}, err
+		} else {
+			mongoIds = append(mongoIds, id)
+		}
+	}
+
+	return mongoIds, nil
+}
+
+func (dbManager *mongodbManagerImp) DeleteProject(projectId model.ID) error {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if id, err := primitive.ObjectIDFromHex(projectId.ToString()); err != nil {
+		loggerObj.Error(err)
+		return err
+	} else {
+		collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+		if _, errDelete := collection.DeleteOne(context.TODO(), bson.M{utils.PROJECT_ID_FIELD: id}); errDelete != nil {
+			loggerObj.Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (dbManager *mongodbManagerImp) getMongoUserID(user *model.User) (*primitive.ObjectID, error) {
+	var userId primitive.ObjectID
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if user.Id == nil {
+		if userObj, err := dbManager.GetUserByEmail(user.Email); err != nil {
+			return nil, err
+		} else {
+			userId, _ = primitive.ObjectIDFromHex(userObj.Id.ToString())
+		}
+
+	} else if id, err := primitive.ObjectIDFromHex(user.Id.ToString()); err != nil {
+		const msg = "invalid user id. Error converting % to MongoDB id format"
+		loggerObj.Error(msg)
+		return nil, errors.New(msg)
+	} else {
+		userId = id
+	}
+
+	return &userId, nil
+}
+
+func (dbManager *mongodbManagerImp) AllProjectFromUser(user *model.User) (model.ProjectList, error) {
+	var ownerId primitive.ObjectID
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if userId, err := dbManager.getMongoUserID(user); err != nil {
+		return model.ProjectList{}, err
+	} else {
+		ownerId = *userId
+	}
+
+	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+
+	if cursor, err := collection.Find(context.TODO(), bson.M{utils.PROJECT_OWNER_ID_FIELD: ownerId}); err != nil {
+		loggerObj.Error(cursor.Err())
+		return model.ProjectList{}, cursor.Err()
+	} else {
+		return dbManager.decodeProjectsFromDbResults(cursor, loggerObj)
+	}
+}
+
+func (dbManager *mongodbManagerImp) DeleteUser(email string) error {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	collection := dbManager.collection(utils.USERS_COLLECTION)
+
+	if _, err := collection.DeleteOne(context.TODO(), bson.M{utils.USER_EMAIL_FIELD: email}); err != nil {
+		loggerObj.Errorf("Error deleting user: %s. Error message: %s", email, err.Error())
+		return err
+	} else {
+		loggerObj.Infof("Deleted user %s", email)
+	}
+
+	return nil
+}
+
 func (dbManager *mongodbManagerImp) collection(name string) *mongo.Collection {
 	return dbManager.db.Collection(name)
 }
@@ -29,18 +150,6 @@ func (dbManager *mongodbManagerImp) collection(name string) *mongo.Collection {
 func (dbManager *mongodbManagerImp) AllProjects(startPosition, offset int) (model.ProjectList, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
-
-	if startPosition < 0 {
-		const msg = "invalid param value, startPosition cannot be a negative number"
-		loggerObj.Error(msg)
-		return nil, errors.New(msg)
-	}
-
-	if offset < 0 {
-		const msg = "invalid param value, offset cannot be a negative number"
-		loggerObj.Error(msg)
-		return nil, errors.New(msg)
-	}
 
 	findOptions := options.Find()
 
@@ -57,27 +166,52 @@ func (dbManager *mongodbManagerImp) AllProjects(startPosition, offset int) (mode
 		loggerObj.Error(cursor.Err())
 		return nil, cursor.Err()
 	} else {
-		var projects model.ProjectList
+		return dbManager.decodeProjectsFromDbResults(cursor, loggerObj)
+	}
+}
 
-		for cursor.Next(context.TODO()) {
-			projectDb := &mdbProjectModel{}
-			if err := cursor.Decode(&projectDb); err != nil {
-				loggerObj.Error(err)
-				return nil, err
-			}
+func (dbManager *mongodbManagerImp) decodeProjectsFromDbResults(
+	cursor *mongo.Cursor,
+	loggerObj *logger.Logger) (model.ProjectList, error) {
 
-			if owner, err := dbManager.GetUserByID(&mdbId{id: projectDb.OwnerID}); err != nil {
-				loggerObj.Error(err)
-				return nil, err
-			} else {
-				project := projectDb.toModel()
-				project.Owner = owner
-				projects = append(projects, project)
-			}
+	var projects model.ProjectList
+	userCache := map[primitive.ObjectID]*model.User{}
+
+	for cursor.Next(context.TODO()) {
+		projectDb := &mdbProjectModel{}
+		if err := cursor.Decode(&projectDb); err != nil {
+			loggerObj.Error(err)
+			return nil, err
 		}
 
-		return projects, nil
+		err := dbManager.updateUserCache(userCache, projectDb, loggerObj)
+		if err != nil {
+			return model.ProjectList{}, err
+		}
+
+		project := projectDb.toModel()
+		project.Owner = userCache[projectDb.OwnerID]
+		projects = append(projects, project)
 	}
+
+	return projects, nil
+}
+
+func (dbManager *mongodbManagerImp) updateUserCache(
+	userCache map[primitive.ObjectID]*model.User,
+	projectDb *mdbProjectModel,
+	loggerObj *logger.Logger) error {
+
+	if _, ok := userCache[projectDb.OwnerID]; !ok {
+		if owner, err := dbManager.GetUserByID(&mdbId{id: projectDb.OwnerID}); err != nil {
+			loggerObj.Error(err)
+			return err
+		} else {
+			userCache[projectDb.OwnerID] = owner
+		}
+
+	}
+	return nil
 }
 
 func (dbManager *mongodbManagerImp) CreateProject(project *model.Project) (*model.Project, error) {
