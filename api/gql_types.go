@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"github.com/freddy311082/picnic-server/model"
 	"github.com/freddy311082/picnic-server/service"
 	"github.com/graphql-go/graphql"
@@ -118,12 +117,12 @@ var Customer = graphql.NewObject(graphql.ObjectConfig{
 						} else {
 							return nil, errors.New("error: project is not valid")
 						}
-
-						return ids, nil
 					}
-				} else {
-					return model.IDList{}, errors.New("invalid project id list")
+
+					return ids, nil
 				}
+
+				return model.IDList{}, errors.New("invalid project id list")
 			},
 		},
 	},
