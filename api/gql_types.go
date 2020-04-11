@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"github.com/freddy311082/picnic-server/model"
 	"github.com/freddy311082/picnic-server/service"
 	"github.com/graphql-go/graphql"
@@ -108,14 +109,20 @@ var Customer = graphql.NewObject(graphql.ObjectConfig{
 			Type:        &graphql.List{OfType: ProjectType},
 			Description: "List of project linked to this Customer.",
 			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-				if p.Args["name"] == nil {
-					return nil, errors.New("unable to resolve projects because Customer ID is nil")
-				}
+				if projects, ok := p.Args["projects"].([]interface{}); ok {
 
-				if projects, err := service.Instance().AllProjectsFromCustomer(customerId); err != nil {
-					return nil, err
+					var ids model.IDList
+					for _, projectId := range projects {
+						if id, ok := projectId.(string); ok {
+							ids = append(ids, service.Instance().NewIDFromString(id))
+						} else {
+							return nil, errors.New("error: project is not valid")
+						}
+
+						return ids, nil
+					}
 				} else {
-					return gqlProjectsFromModel(projects), nil
+					return model.IDList{}, errors.New("invalid project id list")
 				}
 			},
 		},

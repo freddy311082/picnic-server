@@ -7,6 +7,14 @@ import (
 	"github.com/freddy311082/picnic-server/utils"
 )
 
+type privateId struct {
+	id string
+}
+
+func (objId *privateId) ToString() string {
+	return objId.id
+}
+
 type Service interface {
 	Init() error
 	AllUsers(startPosition, offset int) (model.UserList, error)
@@ -27,6 +35,7 @@ type Service interface {
 	DeleteCustomers(ids model.IDList) error
 	AllCustomers() (model.CustomerList, error)
 	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
+	NewIDFromString(strId string) model.ID
 }
 
 type serviceImp struct {
@@ -175,6 +184,10 @@ func (service *serviceImp) Init() error {
 	}
 
 	return nil
+}
+
+func (service *serviceImp) NewIDFromString(strId string) model.ID {
+	return &privateId{id: strId}
 }
 
 func (service *serviceImp) RegisterUser(user *model.User) (*model.User, error) {
