@@ -1,8 +1,11 @@
 package api
 
 import (
+	"errors"
 	"github.com/freddy311082/picnic-server/model"
+	"github.com/freddy311082/picnic-server/service"
 	"github.com/graphql-go/graphql"
+	"time"
 )
 
 var UserType = graphql.NewObject(graphql.ObjectConfig{
@@ -38,7 +41,7 @@ type gqlUserListResponse []*gqlUserResponse
 
 func gqlUserFromModel(user *model.User) *gqlUserResponse {
 	return &gqlUserResponse{
-		ID:       user.Id.ToString(),
+		ID:       user.ID.ToString(),
 		Name:     user.Name,
 		LastName: user.LastName,
 		Email:    user.Email,
@@ -49,8 +52,77 @@ func gqlUserListFromModel(userList model.UserList) gqlUserListResponse {
 	var gqlUserList gqlUserListResponse
 
 	for _, user := range userList {
-		gqlUserList = append(gqlUserList, gqlUserFromModel(&user))
+		gqlUserList = append(gqlUserList, gqlUserFromModel(user))
 	}
 
 	return gqlUserList
+}
+
+var ProjectType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ProjectType",
+	Fields: graphql.Fields{
+		"id": &graphql.Field{
+			Type: graphql.ID,
+		},
+		"name": &graphql.Field{
+			Type: graphql.String,
+		},
+		"description": &graphql.Field{
+			Type: graphql.String,
+		},
+		"created_at": &graphql.Field{
+			Type: graphql.DateTime,
+		},
+		"owner": &graphql.Field{
+			Type: UserType,
+		},
+		"customer": &graphql.Field{
+			Type: Customer,
+		},
+	},
+	Description: "Project object definition",
+})
+
+type gqlProjectTypeRsp struct {
+	ID          string
+	Name        string
+	Description string
+	CreatedAt   time.Time `json:"created_at"`
+	Owner       *gqlUserResponse
+	Customer    *gqlCustomer
+}
+
+var Customer = graphql.NewObject(graphql.ObjectConfig{
+	Name: "CustomerType",
+	Fields: graphql.Fields{
+		"id": &graphql.Field{
+			Type: graphql.ID,
+		},
+		"name": &graphql.Field{
+			Type: graphql.String,
+		},
+		"cuit": &graphql.Field{
+			Type: graphql.String,
+		},
+		"projects": &graphql.Field{
+			Type:        &graphql.List{OfType: ProjectType},
+			Description: "List of project linked to this Customer.",
+			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+				if p.Args["name"] == nil {
+					return nil, errors.New("unable to resolve projects because Customer ID is nil")
+				}
+
+				if projects, err := service.Instance().AllProjectsFromCustomer(customerId); err != nil {
+					return nil, err
+				} else {
+					return gqlProjectsFromModel(projects), nil
+				}
+			},
+		},
+	},
+})
+
+type gqlCustomer struct {
+	ID   string
+	Name string
 }

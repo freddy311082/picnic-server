@@ -19,7 +19,14 @@ type DBManager interface {
 	GetProject(projectId model.ID) (*model.Project, error)
 	UpdateProject(project *model.Project) (*model.Project, error)
 	DeleteProject(projectId model.ID) error
-	DeleteProjects(ids []model.ID) error
+	DeleteProjects(ids model.IDList) error
+	AllProjectWhereIDIsIn(ids model.IDList) (model.ProjectList, error)
+	AddCustomer(customer *model.Customer) (*model.Customer, error)
+	UpdateCustomer(customer *model.Customer) (*model.Customer, error)
+	DeleteCustomer(customerId model.ID) error
+	DeleteCustomers(ids model.IDList) error
+	AllCustomers() (model.CustomerList, error)
+	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
 }
 
 var dbManagerInstance DBManager

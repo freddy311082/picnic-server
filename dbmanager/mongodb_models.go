@@ -1,7 +1,6 @@
 package dbmanager
 
 import (
-	"errors"
 	"github.com/freddy311082/picnic-server/model"
 	"github.com/freddy311082/picnic-server/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -22,31 +21,20 @@ type mdbUserModel struct {
 	Email    string             `bson:"email"`
 }
 
-func (dbUser *mdbUserModel) initFromModel(user *model.User) error {
-	if user == nil {
-		const msg = "invalid userModel. Cannot initiate MongoDB user model from NULL object"
-		loggerObj := utils.LoggerObj()
-		defer loggerObj.Close()
-		loggerObj.Error(msg)
-
-		return errors.New(msg)
-	}
-
-	if user.Id != nil {
-		if objId, err := primitive.ObjectIDFromHex(user.Id.ToString()); err != nil {
+func (dbUser *mdbUserModel) initFromModel(user *model.User) {
+	if user.ID != nil {
+		if objId, err := primitive.ObjectIDFromHex(user.ID.ToString()); err == nil {
 			dbUser.ID = objId
 		}
 	}
 	dbUser.Name = user.Name
 	dbUser.LastName = user.LastName
 	dbUser.Email = user.Email
-
-	return nil
 }
 
 func (dbUser *mdbUserModel) toModel() *model.User {
 	return &model.User{
-		Id: &mdbId{
+		ID: &mdbId{
 			id: dbUser.ID,
 		},
 		Name:     dbUser.Name,
@@ -64,15 +52,7 @@ type mdbProjectModel struct {
 	OwnerID     primitive.ObjectID `bson:"owner_id"`
 }
 
-func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
-	if project == nil {
-		const msg = "invalid projectModel. Cannot initialize MongoDB project model from NULL object"
-		loggerObj := utils.LoggerObj()
-		defer loggerObj.Close()
-		loggerObj.Error(msg)
-		return errors.New(msg)
-	}
-
+func (dbProject *mdbProjectModel) initFromModel(project *model.Project) {
 	if project.ID != nil {
 		if objId, err := primitive.ObjectIDFromHex(project.ID.ToString()); err != nil {
 			dbProject.ID = objId
@@ -82,8 +62,6 @@ func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
 	dbProject.Name = project.Name
 	dbProject.Description = project.Description
 	dbProject.CreatedAt = primitive.NewDateTimeFromTime(project.CreatedAt)
-
-	return nil
 }
 
 func (dbProject *mdbProjectModel) toModel() *model.Project {
@@ -96,4 +74,56 @@ func (dbProject *mdbProjectModel) toModel() *model.Project {
 		Customer:    nil,
 		Fields:      nil,
 	}
+}
+
+type mdbProjectListModel []mdbProjectModel
+
+func (dbProjectList mdbProjectListModel) toModel() model.ProjectList {
+	result := model.ProjectList{}
+
+	for _, dbProject := range dbProjectList {
+		result = append(result, dbProject.toModel())
+	}
+
+	return result
+}
+
+type mdbCustomerModel struct {
+	ID       primitive.ObjectID   `bson:"_id"`
+	Name     string               `bson:"name"`
+	Cuit     string               `bson:"cuit"`
+	Projects []primitive.ObjectID `bson:"projects"`
+}
+
+func (dbCustomer *mdbCustomerModel) toModel() (*model.Customer, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	customer := &model.Customer{
+		ID:   &mdbId{id: dbCustomer.ID},
+		Name: dbCustomer.Name,
+		Cuit: dbCustomer.Cuit,
+	}
+
+	dbManager := Instance().(*mongodbManagerImp)
+	ids := dbManager.mongoIDsToModelIDs(dbCustomer.Projects)
+	projects, err := dbManager.AllProjectWhereIDIsIn(ids)
+	if err == nil {
+		customer.Projects = projects
+	}
+
+	return customer, err
+}
+
+func (dbCustomer *mdbCustomerModel) initFromModel(customer *model.Customer) {
+	if customer.ID != nil {
+		if objId, err := primitive.ObjectIDFromHex(customer.ID.ToString()); err == nil {
+			dbCustomer.ID = objId
+		}
+	}
+
+	dbCustomer.Name = customer.Name
+
+	dbManager := Instance().(*mongodbManagerImp)
+	dbCustomer.Projects, _ = dbManager.modelIDsToMongoIDs(customer.Projects.IDs(), utils.LoggerObj())
 }

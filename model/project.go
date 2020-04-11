@@ -19,3 +19,13 @@ type ProjectField struct {
 }
 
 type ProjectFieldList []ProjectField
+
+func (projectLis ProjectList) IDs() IDList {
+	var ids IDList
+
+	for _, project := range projectLis {
+		ids = append(ids, project.ID)
+	}
+
+	return ids
+}

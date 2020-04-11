@@ -31,7 +31,7 @@ the offset.`,
 				startPos, _ = p.Args["start_pos"].(int)
 				offset, _ = p.Args["offset"].(int)
 
-				result, err := service.Instance().Users(startPos, offset)
+				result, err := service.Instance().AllUsers(startPos, offset)
 
 				if err != nil {
 					return nil, err

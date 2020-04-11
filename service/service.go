@@ -19,11 +19,64 @@ type Service interface {
 	AddProject(project *model.Project) (*model.Project, error)
 	UpdateProject(project *model.Project) (*model.Project, error)
 	DeleteProject(projectId model.ID) error
-	DeleteProjects(ids []model.ID) error
+	DeleteProjects(ids model.IDList) error
+	AllProjectWhereIDIsIn(ids model.IDList) (model.ProjectList, error)
+	AddCustomer(customer *model.Customer) (*model.Customer, error)
+	UpdateCustomer(customer *model.Customer) (*model.Customer, error)
+	DeleteCustomer(customerId model.ID) error
+	DeleteCustomers(ids model.IDList) error
+	AllCustomers() (model.CustomerList, error)
+	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
 }
 
 type serviceImp struct {
 	dbManager dbmanager.DBManager
+}
+
+func (service *serviceImp) AllProjectWhereIDIsIn(ids model.IDList) (model.ProjectList, error) {
+	return dbmanager.Instance().AllProjectWhereIDIsIn(ids)
+}
+
+func (service *serviceImp) AddCustomer(customer *model.Customer) (*model.Customer, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if customer != nil || customer.Name == "" {
+		const msg = "unable to create a customer. Customer cannot be null or name cannot be empty"
+		loggerObj.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	return dbmanager.Instance().AddCustomer(customer)
+}
+
+func (service *serviceImp) UpdateCustomer(customer *model.Customer) (*model.Customer, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if customer != nil || customer.Name == "" {
+		const msg = "unable to create a customer. Customer cannot be null or name cannot be empty"
+		loggerObj.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	return dbmanager.Instance().UpdateCustomer(customer)
+}
+
+func (service *serviceImp) DeleteCustomer(customerId model.ID) error {
+	return dbmanager.Instance().DeleteCustomer(customerId)
+}
+
+func (service *serviceImp) DeleteCustomers(ids model.IDList) error {
+	return dbmanager.Instance().DeleteCustomers(ids)
+}
+
+func (service *serviceImp) AllCustomers() (model.CustomerList, error) {
+	return dbmanager.Instance().AllCustomers()
+}
+
+func (service *serviceImp) AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error) {
+	return dbmanager.Instance().AllCustomersWhereIDIsIn(ids)
 }
 
 func (service *serviceImp) GetUser(user *model.User) (*model.User, error) {
@@ -35,8 +88,8 @@ func (service *serviceImp) GetUser(user *model.User) (*model.User, error) {
 		return nil, errors.New(msg)
 	}
 
-	if user.Id != nil {
-		return dbmanager.Instance().GetUserByID(user.Id)
+	if user.ID != nil {
+		return dbmanager.Instance().GetUserByID(user.ID)
 	} else {
 		return dbmanager.Instance().GetUserByEmail(user.Email)
 	}
@@ -108,7 +161,7 @@ func (service *serviceImp) DeleteProject(projectId model.ID) error {
 	return dbmanager.Instance().DeleteProject(projectId)
 }
 
-func (service *serviceImp) DeleteProjects(ids []model.ID) error {
+func (service *serviceImp) DeleteProjects(ids model.IDList) error {
 	return dbmanager.Instance().DeleteProjects(ids)
 }
 

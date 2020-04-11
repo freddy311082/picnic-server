@@ -23,3 +23,4 @@ const PROJECT_OWNER_ID_FIELD = "owner_id"
 const PROJECT_FIELDS_LIST_FIELD = "fields"
 
 const CUSTOMERS_COLLECTION = "customers"
+const CUSTOMER_ID_FIELD = "_id"

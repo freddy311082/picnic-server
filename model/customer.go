@@ -1,9 +1,9 @@
 package model
 
 type Customer struct {
-	Id       ID
+	ID       ID
 	Name     string
-	Cuit     int
+	Cuit     string
 	Projects ProjectList
 }
 
