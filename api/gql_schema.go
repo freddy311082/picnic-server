@@ -307,6 +307,42 @@ the offset.`,
 					}
 				},
 			},
+			"createCustomer": &graphql.Field{
+				Type: CustomerType,
+				Args: graphql.FieldConfigArgument{
+					"name": &graphql.ArgumentConfig{
+						Type: &graphql.NonNull{OfType: graphql.String},
+					},
+					"cuit": &graphql.ArgumentConfig{
+						Type: &graphql.NonNull{OfType: graphql.String},
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+					var name, cuit string
+
+					if value, ok := p.Args["name"].(string); !ok {
+						return nil, errors.New("invalid name value")
+					} else {
+						name = value
+					}
+
+					if value, ok := p.Args["cuit"].(string); !ok {
+						return nil, errors.New("")
+					} else {
+						cuit = value
+					}
+
+					if result, err := service.Instance().CreateCustomer(&model.Customer{
+						Name: name,
+						Cuit: cuit,
+					}); err != nil {
+						return nil, err
+					} else {
+						return gqlCustomerFromModel(result), nil
+					}
+				},
+				Description: "Create new Customer in the system",
+			},
 		},
 		Description: "Mutations definitions for Picnic GraphQL API.",
 	})

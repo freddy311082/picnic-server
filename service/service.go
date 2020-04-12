@@ -30,7 +30,7 @@ type Service interface {
 	DeleteProject(projectId model.ID) error
 	DeleteProjects(ids model.IDList) error
 	AllProjectWhereIDIsIn(ids model.IDList) (model.ProjectList, error)
-	AddCustomer(customer *model.Customer) (*model.Customer, error)
+	CreateCustomer(customer *model.Customer) (*model.Customer, error)
 	UpdateCustomer(customer *model.Customer) (*model.Customer, error)
 	DeleteCustomer(customerId model.ID) error
 	DeleteCustomers(ids model.IDList) error
@@ -51,11 +51,11 @@ func (service *serviceImp) AllProjectWhereIDIsIn(ids model.IDList) (model.Projec
 	return dbmanager.Instance().AllProjectWhereIDIsIn(ids)
 }
 
-func (service *serviceImp) AddCustomer(customer *model.Customer) (*model.Customer, error) {
+func (service *serviceImp) CreateCustomer(customer *model.Customer) (*model.Customer, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
 
-	if customer != nil || customer.Name == "" {
+	if customer == nil || customer.Name == "" {
 		const msg = "unable to create a customer. Customer cannot be null or name cannot be empty"
 		loggerObj.Error(msg)
 		return nil, errors.New(msg)

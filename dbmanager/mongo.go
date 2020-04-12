@@ -119,6 +119,7 @@ func (dbManager *mongodbManagerImp) AddCustomer(customer *model.Customer) (*mode
 
 	customerDb := &mdbCustomerModel{}
 	customerDb.initFromModel(customer)
+	customerDb.ID = primitive.NewObjectID()
 
 	collection := dbManager.collection(utils.CUSTOMERS_COLLECTION)
 	if result, err := collection.InsertOne(context.TODO(), customerDb); err != nil {
