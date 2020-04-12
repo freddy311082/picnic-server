@@ -16,7 +16,7 @@ type gqlUserRsp struct {
 	Email    string
 }
 
-type gqlUserListResponse []*gqlUserRsp
+type gqlUserListRsp []*gqlUserRsp
 
 func gqlUserFromModel(user *model.User) *gqlUserRsp {
 	return &gqlUserRsp{
@@ -27,8 +27,8 @@ func gqlUserFromModel(user *model.User) *gqlUserRsp {
 	}
 }
 
-func gqlUserListFromModel(userList model.UserList) gqlUserListResponse {
-	var gqlUserList gqlUserListResponse
+func gqlUserListFromModel(userList model.UserList) gqlUserListRsp {
+	var gqlUserList gqlUserListRsp
 
 	for _, user := range userList {
 		gqlUserList = append(gqlUserList, gqlUserFromModel(user))
@@ -46,20 +46,51 @@ type gqlProjectRsp struct {
 	Customer    *gqlCustomerRsp
 }
 
-func (obj *gqlProjectRsp) initFromModel(project *model.Project) {
-	obj.ID = project.ID.ToString()
-	obj.Name = project.Name
-	obj.Description = project.Description
-	obj.CreatedAt = project.CreatedAt
+func gqlProjectFromModel(project *model.Project) *gqlProjectRsp {
+	result := &gqlProjectRsp{
+		ID:          project.ID.ToString(),
+		Name:        project.Name,
+		Description: project.Description,
+		CreatedAt:   project.CreatedAt,
+	}
+
+	if project.Owner != nil {
+		result.Owner = gqlUserFromModel(project.Owner)
+	}
+
+	if project.Customer != nil {
+		result.Customer = gqlCustomerFromModel(project.Customer)
+	}
+
+	return result
 }
 
-type gqlProjectListRsp []gqlProjectRsp
+func gqlProjectListFromModel(projects model.ProjectList) gqlProjectListRsp {
+	var result gqlProjectListRsp
+
+	for _, project := range projects {
+		result = append(result, gqlProjectFromModel(project))
+	}
+
+	return result
+}
+
+type gqlProjectListRsp []*gqlProjectRsp
 
 type gqlCustomerRsp struct {
 	ID       string
 	Name     string
 	Cuit     string
-	Projects *gqlProjectRsp
+	Projects gqlProjectListRsp
+}
+
+func gqlCustomerFromModel(customer *model.Customer) *gqlCustomerRsp {
+	return &gqlCustomerRsp{
+		ID:       customer.ID.ToString(),
+		Name:     customer.Name,
+		Cuit:     customer.Cuit,
+		Projects: gqlProjectListFromModel(customer.Projects),
+	}
 }
 
 func GetSchema() (*graphql.Schema, error) {
@@ -147,7 +178,7 @@ func GetSchema() (*graphql.Schema, error) {
 		},
 	})
 
-	CustomerType.AddFieldConfig("customer", &graphql.Field{
+	ProjectType.AddFieldConfig("customer", &graphql.Field{
 		Type: CustomerType,
 	})
 
@@ -238,11 +269,42 @@ the offset.`,
 						Type:        graphql.String,
 						Description: "Description about the projects.",
 					},
-					"created_at": &graphql.ArgumentConfig{
-						Type:         &graphql.NonNull{OfType: graphql.DateTime},
-						DefaultValue: time.Now(),
-						Description:  "",
+					"owner": &graphql.ArgumentConfig{
+						Type:        &graphql.NonNull{OfType: graphql.ID},
+						Description: "User ID corresponding to the project owner which is the one who created this project.",
 					},
+				},
+				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+					var name, description string
+					var id model.ID
+
+					name, _ = p.Args["name"].(string)
+					if name == "" {
+						return nil, errors.New("name is required and cannot be empty")
+					}
+
+					if value, ok := p.Args["description"].(string); ok {
+						description = value
+					} else {
+						description = ""
+					}
+
+					if value, ok := p.Args["owner"].(string); ok {
+						id = service.Instance().NewIDFromString(value)
+					} else {
+						return nil, errors.New("owner id cannot be nil")
+					}
+
+					if result, err := service.Instance().CreateProject(&model.Project{
+						Name:        name,
+						Description: description,
+						CreatedAt:   time.Now(),
+						Owner:       &model.User{ID: id},
+					}); err != nil {
+						return nil, err
+					} else {
+						return gqlProjectFromModel(result), nil
+					}
 				},
 			},
 		},

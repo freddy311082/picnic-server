@@ -385,9 +385,12 @@ func (dbManager *mongodbManagerImp) CreateProject(project *model.Project) (*mode
 	defer loggerObj.Close()
 
 	projectDb := &mdbProjectModel{}
-	projectDb.initFromModel(project)
+	if err := projectDb.initFromModel(project); err != nil {
+		return nil, err
+	}
 
 	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+	projectDb.ID = primitive.NewObjectID()
 	if result, err := collection.InsertOne(context.TODO(), projectDb); err != nil {
 		loggerObj.Error(err.Error())
 		return nil, err

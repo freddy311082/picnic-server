@@ -52,16 +52,28 @@ type mdbProjectModel struct {
 	OwnerID     primitive.ObjectID `bson:"owner_id"`
 }
 
-func (dbProject *mdbProjectModel) initFromModel(project *model.Project) {
+func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
 	if project.ID != nil {
 		if objId, err := primitive.ObjectIDFromHex(project.ID.ToString()); err != nil {
 			dbProject.ID = objId
 		}
 	}
 
+	if id, err := primitive.ObjectIDFromHex(project.Owner.ID.ToString()); err != nil {
+		loggerObj.Error(err)
+		return err
+	} else {
+		dbProject.OwnerID = id
+	}
+
 	dbProject.Name = project.Name
 	dbProject.Description = project.Description
 	dbProject.CreatedAt = primitive.NewDateTimeFromTime(project.CreatedAt)
+
+	return nil
 }
 
 func (dbProject *mdbProjectModel) toModel() *model.Project {
