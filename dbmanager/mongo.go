@@ -23,6 +23,24 @@ type mongodbManagerImp struct {
 	initiated     bool
 }
 
+func (dbManager *mongodbManagerImp) AllUsersWhereIDIsIn(ids model.IDList) (model.UserList, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if dbIds, err := dbManager.modelIDsToMongoIDs(ids, loggerObj); err != nil {
+		loggerObj.Error(err)
+		return model.UserList{}, err
+	} else if cursor, queryErr := dbManager.collection(utils.USERS_COLLECTION).Find(context.TODO(),
+		bson.M{
+			utils.USER_ID_FIELD: bson.M{"$in": dbIds},
+		}); queryErr != nil {
+		loggerObj.Error(queryErr)
+		return model.UserList{}, err
+	} else {
+		return dbManager.decodeBsonIntoUserListModel(cursor, loggerObj)
+	}
+}
+
 func (dbManager *mongodbManagerImp) AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
@@ -435,8 +453,14 @@ func (dbManager *mongodbManagerImp) UpdateProject(project *model.Project) (*mode
 	projectDb := &mdbProjectModel{}
 	projectDb.initFromModel(project)
 
+	id, idErr := primitive.ObjectIDFromHex(project.ID.ToString())
+	if idErr != nil {
+		loggerObj.Error(idErr)
+		return nil, idErr
+	}
+
 	if result, err := collection.UpdateOne(context.TODO(),
-		bson.D{{utils.PROJECT_ID_FIELD, primitive.ObjectIDFromHex(project.ID.ToString())}},
+		bson.D{{utils.PROJECT_ID_FIELD, id}},
 		projectDb); err != nil {
 		loggerObj.Error(err)
 		return nil, err

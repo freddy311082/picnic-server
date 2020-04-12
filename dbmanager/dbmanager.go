@@ -13,6 +13,7 @@ type DBManager interface {
 	GetUserByEmail(email string) (*model.User, error)
 	GetUserByID(id model.ID) (*model.User, error)
 	AllUsers(startPosition, offset int) (model.UserList, error)
+	AllUsersWhereIDIsIn(ids model.IDList) (model.UserList, error)
 	AllProjects(startPosition, offset int) (model.ProjectList, error)
 	AllProjectFromUser(user *model.User) (model.ProjectList, error)
 	CreateProject(project *model.Project) (*model.Project, error)

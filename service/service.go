@@ -21,6 +21,7 @@ type Service interface {
 	RegisterUser(user *model.User) (*model.User, error)
 	GetUser(user *model.User) (*model.User, error)
 	DeleteUser(user *model.User) error
+	AllUsersWhereIDIsIn(ids model.IDList) (model.UserList, error)
 	CreateProject(project *model.Project) (*model.Project, error)
 	AllProjects(startPosition, offset int) (model.ProjectList, error)
 	AllProjectsByUser(user *model.User) (model.ProjectList, error)
@@ -40,6 +41,10 @@ type Service interface {
 
 type serviceImp struct {
 	dbManager dbmanager.DBManager
+}
+
+func (service *serviceImp) AllUsersWhereIDIsIn(ids model.IDList) (model.UserList, error) {
+	return dbmanager.Instance().AllUsersWhereIDIsIn(ids)
 }
 
 func (service *serviceImp) AllProjectWhereIDIsIn(ids model.IDList) (model.ProjectList, error) {
