@@ -7,4 +7,4 @@ type Customer struct {
 	Projects ProjectList
 }
 
-type CustomerList []Customer
+type CustomerList []*Customer

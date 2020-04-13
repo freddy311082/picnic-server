@@ -87,13 +87,17 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoCustomerListModel(
 	cursor *mongo.Cursor,
 	loggerObj *logger.Logger) (model.CustomerList, error) {
 
-	result := model.CustomerList{}
+	var result model.CustomerList
 
 	for cursor.Next(context.TODO()) {
-		customer := &mdbCustomerModel{}
-		if err := cursor.Decode(&customer); err != nil {
+		customerDb := &mdbCustomerModel{}
+		if err := cursor.Decode(&customerDb); err != nil {
 			loggerObj.Error(err)
 			return nil, err
+		} else if customer, decodeErr := customerDb.toModel(); decodeErr != nil {
+			return nil, err
+		} else {
+			result = append(result, customer)
 		}
 	}
 
@@ -113,7 +117,7 @@ func (dbManager *mongodbManagerImp) AllCustomers() (model.CustomerList, error) {
 	}
 }
 
-func (dbManager *mongodbManagerImp) AddCustomer(customer *model.Customer) (*model.Customer, error) {
+func (dbManager *mongodbManagerImp) CreateCustomer(customer *model.Customer) (*model.Customer, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
 

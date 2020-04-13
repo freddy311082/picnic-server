@@ -61,7 +61,7 @@ func (service *serviceImp) CreateCustomer(customer *model.Customer) (*model.Cust
 		return nil, errors.New(msg)
 	}
 
-	return dbmanager.Instance().AddCustomer(customer)
+	return dbmanager.Instance().CreateCustomer(customer)
 }
 
 func (service *serviceImp) UpdateCustomer(customer *model.Customer) (*model.Customer, error) {

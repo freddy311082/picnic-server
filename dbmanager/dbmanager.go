@@ -22,7 +22,7 @@ type DBManager interface {
 	DeleteProject(projectId model.ID) error
 	DeleteProjects(ids model.IDList) error
 	AllProjectWhereIDIsIn(ids model.IDList) (model.ProjectList, error)
-	AddCustomer(customer *model.Customer) (*model.Customer, error)
+	CreateCustomer(customer *model.Customer) (*model.Customer, error)
 	UpdateCustomer(customer *model.Customer) (*model.Customer, error)
 	DeleteCustomer(customerId model.ID) error
 	DeleteCustomers(ids model.IDList) error

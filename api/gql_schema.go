@@ -46,6 +46,8 @@ type gqlProjectRsp struct {
 	Customer    *gqlCustomerRsp
 }
 
+type gqlProjectListRsp []*gqlProjectRsp
+
 func gqlProjectFromModel(project *model.Project) *gqlProjectRsp {
 	result := &gqlProjectRsp{
 		ID:          project.ID.ToString(),
@@ -75,14 +77,14 @@ func gqlProjectListFromModel(projects model.ProjectList) gqlProjectListRsp {
 	return result
 }
 
-type gqlProjectListRsp []*gqlProjectRsp
-
 type gqlCustomerRsp struct {
 	ID       string
 	Name     string
 	Cuit     string
 	Projects gqlProjectListRsp
 }
+
+type gqlCustomerListRsp []*gqlCustomerRsp
 
 func gqlCustomerFromModel(customer *model.Customer) *gqlCustomerRsp {
 	return &gqlCustomerRsp{
@@ -91,6 +93,16 @@ func gqlCustomerFromModel(customer *model.Customer) *gqlCustomerRsp {
 		Cuit:     customer.Cuit,
 		Projects: gqlProjectListFromModel(customer.Projects),
 	}
+}
+
+func gqlCustomerListFromModel(customers model.CustomerList) gqlCustomerListRsp {
+	var result gqlCustomerListRsp
+
+	for _, customer := range customers {
+		result = append(result, gqlCustomerFromModel(customer))
+	}
+
+	return result
 }
 
 func GetSchema() (*graphql.Schema, error) {
@@ -215,6 +227,19 @@ the offset.`,
 						return nil, err
 					} else {
 						return gqlUserListFromModel(result), nil
+					}
+				},
+			},
+			"customers": &graphql.Field{
+				Type: &graphql.List{
+					OfType: CustomerType,
+				},
+				Args: nil,
+				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+					if customers, err := service.Instance().AllCustomers(); err != nil {
+						return nil, err
+					} else {
+						return gqlCustomerListFromModel(customers), nil
 					}
 				},
 			},

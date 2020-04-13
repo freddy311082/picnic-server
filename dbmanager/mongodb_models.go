@@ -135,6 +135,7 @@ func (dbCustomer *mdbCustomerModel) initFromModel(customer *model.Customer) {
 	}
 
 	dbCustomer.Name = customer.Name
+	dbCustomer.Cuit = customer.Cuit
 
 	dbManager := Instance().(*mongodbManagerImp)
 	dbCustomer.Projects, _ = dbManager.modelIDsToMongoIDs(customer.Projects.IDs(), utils.LoggerObj())
