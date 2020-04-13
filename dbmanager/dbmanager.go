@@ -28,6 +28,7 @@ type DBManager interface {
 	DeleteCustomers(ids model.IDList) error
 	AllCustomers() (model.CustomerList, error)
 	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
+	GetCustomerByID(customerId model.ID) (*model.Customer, error)
 }
 
 var dbManagerInstance DBManager

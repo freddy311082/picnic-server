@@ -50,6 +50,7 @@ type mdbProjectModel struct {
 	Description string             `bson:"description"`
 	CreatedAt   primitive.DateTime `bson:"created_at"`
 	OwnerID     primitive.ObjectID `bson:"owner_id"`
+	CustomerID  primitive.ObjectID `bson:"customer_id"`
 }
 
 func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
@@ -67,6 +68,13 @@ func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
 		return err
 	} else {
 		dbProject.OwnerID = id
+	}
+
+	if id, err := primitive.ObjectIDFromHex(project.Customer.ID.ToString()); err != nil {
+		loggerObj.Error(err)
+		return err
+	} else {
+		dbProject.CustomerID = id
 	}
 
 	dbProject.Name = project.Name

@@ -175,7 +175,7 @@ func GetSchema() (*graphql.Schema, error) {
 						var ids model.IDList
 						for _, projectId := range projects {
 							if id, ok := projectId.(string); ok {
-								ids = append(ids, service.Instance().NewIDFromString(id))
+								ids = append(ids, service.Instance().CreateModelIDFromString(id))
 							} else {
 								return nil, errors.New("invalid project id")
 							}
@@ -198,10 +198,8 @@ func GetSchema() (*graphql.Schema, error) {
 	var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQueries",
 		Fields: graphql.Fields{
-			"users": &graphql.Field{
-				Type: &graphql.List{
-					OfType: UserType,
-				},
+			"allUsers": &graphql.Field{
+				Type: &graphql.List{OfType: UserType},
 				Args: graphql.FieldConfigArgument{
 					"start_pos": &graphql.ArgumentConfig{
 						Type:         &graphql.NonNull{OfType: graphql.Int},
@@ -230,10 +228,8 @@ the offset.`,
 					}
 				},
 			},
-			"customers": &graphql.Field{
-				Type: &graphql.List{
-					OfType: CustomerType,
-				},
+			"allCustomers": &graphql.Field{
+				Type: &graphql.List{OfType: CustomerType},
 				Args: nil,
 				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
 					if customers, err := service.Instance().AllCustomers(); err != nil {
@@ -242,6 +238,36 @@ the offset.`,
 						return gqlCustomerListFromModel(customers), nil
 					}
 				},
+				Description: "Get the list of customers.",
+			},
+			"allProjects": &graphql.Field{
+				Type: &graphql.List{OfType: ProjectType},
+				Args: graphql.FieldConfigArgument{
+					"start_pos": &graphql.ArgumentConfig{
+						Type:         &graphql.NonNull{OfType: graphql.Int},
+						DefaultValue: 0,
+						Description:  "",
+					},
+					"offset": &graphql.ArgumentConfig{
+						Type:         &graphql.NonNull{OfType: graphql.Int},
+						DefaultValue: 0,
+						Description: `Number of projects per page. By default, the number is 0. If 0 is passed, then all 
+projects will be returned. If a positive number is passed, then the amount of projects returned will be less or equal than
+the offset.`,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+					var startPos, offset int
+					startPos, _ = p.Args["start_pos"].(int)
+					offset, _ = p.Args["offset"].(int)
+
+					if projects, err := service.Instance().AllProjects(startPos, offset); err != nil {
+						return make(gqlProjectListRsp, 0), err
+					} else {
+						return gqlProjectListFromModel(projects), nil
+					}
+				},
+				Description: "List all projects linked to the current user",
 			},
 		},
 		Description: "Root Query for Picnic GraphQL Web Server",
@@ -294,14 +320,18 @@ the offset.`,
 						Type:        graphql.String,
 						Description: "Description about the projects.",
 					},
-					"owner": &graphql.ArgumentConfig{
+					"owner_id": &graphql.ArgumentConfig{
 						Type:        &graphql.NonNull{OfType: graphql.ID},
 						Description: "User ID corresponding to the project owner which is the one who created this project.",
+					},
+					"customer_id": &graphql.ArgumentConfig{
+						Type:        &graphql.NonNull{OfType: graphql.ID},
+						Description: "Customer ID which represent the customer linked to this project.",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
 					var name, description string
-					var id model.ID
+					var ownerId, customerId model.ID
 
 					name, _ = p.Args["name"].(string)
 					if name == "" {
@@ -314,17 +344,22 @@ the offset.`,
 						description = ""
 					}
 
-					if value, ok := p.Args["owner"].(string); ok {
-						id = service.Instance().NewIDFromString(value)
+					if value, ok := p.Args["owner_id"].(string); ok {
+						ownerId = service.Instance().CreateModelIDFromString(value)
 					} else {
 						return nil, errors.New("owner id cannot be nil")
+					}
+
+					if value, ok := p.Args["customer_id"].(string); ok {
+						customerId = service.Instance().CreateModelIDFromString(value)
 					}
 
 					if result, err := service.Instance().CreateProject(&model.Project{
 						Name:        name,
 						Description: description,
 						CreatedAt:   time.Now(),
-						Owner:       &model.User{ID: id},
+						Owner:       &model.User{ID: ownerId},
+						Customer:    &model.Customer{ID: customerId},
 					}); err != nil {
 						return nil, err
 					} else {

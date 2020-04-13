@@ -15,12 +15,49 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type cacheKey struct {
+	id             primitive.ObjectID
+	collectionName string
+}
+
 type mongodbManagerImp struct {
 	isOpen        bool
 	client        *mongo.Client
 	clientOptions *options.ClientOptions
 	db            *mongo.Database
 	initiated     bool
+	cache         map[cacheKey]interface{}
+}
+
+func (dbManager *mongodbManagerImp) GetCustomerByID(customerId model.ID) (*model.Customer, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if id, err := dbManager.modelIDtoMongoID(customerId, loggerObj); err != nil {
+		return nil, err
+	} else {
+		collection := dbManager.collection(utils.CUSTOMERS_COLLECTION)
+
+		if result := collection.FindOne(context.TODO(), bson.M{utils.CUSTOMER_ID_FIELD: id}); result.Err() != nil {
+			loggerObj.Error(err)
+			return nil, result.Err()
+		} else {
+			return dbManager.decodeBsonIntoCustomerModel(result, loggerObj)
+		}
+	}
+}
+
+func (dbManager *mongodbManagerImp) existsObject(id primitive.ObjectID, collectionName string) (bool, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	collection := dbManager.collection(collectionName)
+	if count, err := collection.CountDocuments(context.TODO(), bson.M{"_id": id}); err != nil {
+		loggerObj.Error(err)
+		return false, err
+	} else {
+		return count > 0, nil
+	}
 }
 
 func (dbManager *mongodbManagerImp) AllUsersWhereIDIsIn(ids model.IDList) (model.UserList, error) {
@@ -80,6 +117,19 @@ func (dbManager *mongodbManagerImp) AllProjectWhereIDIsIn(ids model.IDList) (mod
 		} else {
 			return dbManager.decodeBsonIntoProjectListModel(cursor, loggerObj)
 		}
+	}
+}
+
+func (dbManager *mongodbManagerImp) decodeBsonIntoCustomerModel(
+	singleResult *mongo.SingleResult,
+	loggerObj *logger.Logger) (*model.Customer, error) {
+
+	customerDb := &mdbCustomerModel{}
+	if err := singleResult.Decode(customerDb); err != nil {
+		loggerObj.Error(err)
+		return nil, err
+	} else {
+		return customerDb.toModel()
 	}
 }
 
@@ -209,7 +259,7 @@ func (dbManager *mongodbManagerImp) DeleteProjects(ids model.IDList) error {
 }
 
 func (dbManager *mongodbManagerImp) mongoIDsToModelIDs(mdbIds []primitive.ObjectID) model.IDList {
-	if mdbIds != nil || len(mdbIds) > 0 {
+	if len(mdbIds) > 0 {
 		var result model.IDList
 
 		for _, id := range mdbIds {
@@ -219,6 +269,18 @@ func (dbManager *mongodbManagerImp) mongoIDsToModelIDs(mdbIds []primitive.Object
 		return result
 	} else {
 		return make(model.IDList, 0)
+	}
+}
+
+func (dbManager *mongodbManagerImp) modelIDtoMongoID(
+	id model.ID,
+	loggerObj *logger.Logger) (primitive.ObjectID, error) {
+
+	if dbId, err := primitive.ObjectIDFromHex(id.ToString()); err != nil {
+		loggerObj.Error(err)
+		return primitive.ObjectID{}, err
+	} else {
+		return dbId, nil
 	}
 }
 
@@ -233,7 +295,7 @@ func (dbManager *mongodbManagerImp) modelIDsToMongoIDs(
 	var mongoIds []primitive.ObjectID
 
 	for _, modelId := range ids {
-		if id, err := primitive.ObjectIDFromHex(modelId.ToString()); err != nil {
+		if id, err := dbManager.modelIDtoMongoID(modelId, loggerObj); err != nil {
 			loggerObj.Error(err)
 			return []primitive.ObjectID{}, err
 		} else {
@@ -299,8 +361,8 @@ func (dbManager *mongodbManagerImp) AllProjectFromUser(user *model.User) (model.
 	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
 
 	if cursor, err := collection.Find(context.TODO(), bson.M{utils.PROJECT_OWNER_ID_FIELD: ownerId}); err != nil {
-		loggerObj.Error(cursor.Err())
-		return model.ProjectList{}, cursor.Err()
+		loggerObj.Error(err)
+		return model.ProjectList{}, err
 	} else {
 		return dbManager.decodeBsonIntoProjectListModel(cursor, loggerObj)
 	}
@@ -342,8 +404,8 @@ func (dbManager *mongodbManagerImp) AllProjects(startPosition, offset int) (mode
 
 	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
 	if cursor, err := collection.Find(context.TODO(), bson.D{}, findOptions); err != nil {
-		loggerObj.Error(cursor.Err())
-		return nil, cursor.Err()
+		loggerObj.Error(err)
+		return nil, err
 	} else {
 		return dbManager.decodeBsonIntoProjectListModel(cursor, loggerObj)
 	}
@@ -354,7 +416,7 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoProjectListModel(
 	loggerObj *logger.Logger) (model.ProjectList, error) {
 
 	var projects model.ProjectList
-	userCache := map[primitive.ObjectID]*model.User{}
+	ownerCache := map[primitive.ObjectID]*model.User{}
 
 	for cursor.Next(context.TODO()) {
 		projectDb := &mdbProjectModel{}
@@ -363,14 +425,19 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoProjectListModel(
 			return nil, err
 		}
 
-		err := dbManager.updateUserCache(userCache, projectDb, loggerObj)
+		err := dbManager.updateUserCache(ownerCache, projectDb, loggerObj)
 		if err != nil {
 			return model.ProjectList{}, err
 		}
 
 		project := projectDb.toModel()
-		project.Owner = userCache[projectDb.OwnerID]
+		project.Owner = ownerCache[projectDb.OwnerID]
 		projects = append(projects, project)
+
+		if project.Customer, err = dbManager.GetCustomerByID(&mdbId{id: projectDb.CustomerID}); err != nil {
+			loggerObj.Error(err)
+			return model.ProjectList{}, err
+		}
 	}
 
 	return projects, nil
@@ -399,6 +466,14 @@ func (dbManager *mongodbManagerImp) CreateProject(project *model.Project) (*mode
 
 	projectDb := &mdbProjectModel{}
 	if err := projectDb.initFromModel(project); err != nil {
+		return nil, err
+	}
+
+	if exists, err := dbManager.existsObject(projectDb.CustomerID, utils.CUSTOMERS_COLLECTION); err != nil {
+		return nil, err
+	} else if !exists {
+		err := errors.New("cannot create project with invalid customer id. Customer id doesn't exists")
+		loggerObj.Error(err)
 		return nil, err
 	}
 
@@ -452,6 +527,12 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoProjectModel(result *mongo.Sin
 		project.Owner = owner
 	}
 
+	if customer, err := dbManager.GetCustomerByID(&mdbId{id: projectDb.CustomerID}); err != nil {
+		return nil, err
+	} else {
+		project.Customer = customer
+	}
+
 	return project, nil
 }
 
@@ -467,7 +548,10 @@ func (dbManager *mongodbManagerImp) UpdateProject(project *model.Project) (*mode
 
 	collection := dbManager.collection(utils.PROJECTS_COLLECTION)
 	projectDb := &mdbProjectModel{}
-	projectDb.initFromModel(project)
+
+	if err := projectDb.initFromModel(project); err != nil {
+		return nil, err
+	}
 
 	id, idErr := primitive.ObjectIDFromHex(project.ID.ToString())
 	if idErr != nil {
@@ -494,6 +578,7 @@ func (dbManager *mongodbManagerImp) UpdateProject(project *model.Project) (*mode
 func (dbManager *mongodbManagerImp) init() {
 	// users collection
 	if !dbManager.initiated {
+		dbManager.cache = make(map[cacheKey]interface{})
 		usersCollection := dbManager.collection(utils.USERS_COLLECTION)
 		usersCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
 			Keys:    bson.M{utils.USER_EMAIL_FIELD: 1},

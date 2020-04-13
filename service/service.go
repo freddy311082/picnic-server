@@ -36,7 +36,7 @@ type Service interface {
 	DeleteCustomers(ids model.IDList) error
 	AllCustomers() (model.CustomerList, error)
 	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
-	NewIDFromString(strId string) model.ID
+	CreateModelIDFromString(strId string) model.ID
 }
 
 type serviceImp struct {
@@ -191,7 +191,7 @@ func (service *serviceImp) Init() error {
 	return nil
 }
 
-func (service *serviceImp) NewIDFromString(strId string) model.ID {
+func (service *serviceImp) CreateModelIDFromString(strId string) model.ID {
 	return &privateId{id: strId}
 }
 
