@@ -209,18 +209,26 @@ func (dbManager *mongodbManagerImp) DeleteProjects(ids model.IDList) error {
 }
 
 func (dbManager *mongodbManagerImp) mongoIDsToModelIDs(mdbIds []primitive.ObjectID) model.IDList {
-	var result model.IDList
+	if mdbIds != nil || len(mdbIds) > 0 {
+		var result model.IDList
 
-	for _, id := range mdbIds {
-		result = append(result, &mdbId{id: id})
+		for _, id := range mdbIds {
+			result = append(result, &mdbId{id: id})
+		}
+
+		return result
+	} else {
+		return make(model.IDList, 0)
 	}
-
-	return result
 }
 
 func (dbManager *mongodbManagerImp) modelIDsToMongoIDs(
 	ids model.IDList,
 	loggerObj *logger.Logger) ([]primitive.ObjectID, error) {
+
+	if ids == nil || len(ids) == 0 {
+		return make([]primitive.ObjectID, 0), nil
+	}
 
 	var mongoIds []primitive.ObjectID
 
