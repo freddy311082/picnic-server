@@ -29,6 +29,40 @@ type mongodbManagerImp struct {
 	cache         map[cacheKey]interface{}
 }
 
+func (dbManager *mongodbManagerImp) AllProjectsFromCustomer(customerId model.ID) (model.ProjectList, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+
+	if dbCustomerId, err := dbManager.modelIDtoMongoID(customerId, loggerObj); err != nil {
+		return model.ProjectList{}, err
+	} else {
+		collection := dbManager.collection(utils.PROJECTS_COLLECTION)
+
+		if cursor, err := collection.Find(context.TODO(), bson.M{utils.PROJECT_CUSTOMER_ID_FIELD: dbCustomerId}); err != nil {
+			loggerObj.Error(err)
+			return model.ProjectList{}, err
+		} else {
+			return dbManager.decodeBsonIntoProjectListModel(cursor, loggerObj)
+		}
+	}
+}
+
+func (dbManager *mongodbManagerImp) GetOwnerFromProjectID(projectId model.ID) (*model.User, error) {
+	loggerObj := utils.LoggerObj()
+	defer loggerObj.Close()
+	var err error
+	var dbProjectId primitive.ObjectID
+	var user *model.User
+
+	if dbProjectId, err = dbManager.modelIDtoMongoID(projectId, loggerObj); err != nil {
+		return nil, err
+	} else if user, err = dbManager.GetUserByID(&mdbId{id: dbProjectId}); err != nil {
+		return nil, err
+	} else {
+		return user, nil
+	}
+}
+
 func (dbManager *mongodbManagerImp) GetCustomerByID(customerId model.ID) (*model.Customer, error) {
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
@@ -36,6 +70,7 @@ func (dbManager *mongodbManagerImp) GetCustomerByID(customerId model.ID) (*model
 	if id, err := dbManager.modelIDtoMongoID(customerId, loggerObj); err != nil {
 		return nil, err
 	} else {
+		loggerObj.Info("Customer ID", id.Hex())
 		collection := dbManager.collection(utils.CUSTOMERS_COLLECTION)
 
 		if result := collection.FindOne(context.TODO(), bson.M{utils.CUSTOMER_ID_FIELD: id}); result.Err() != nil {
@@ -199,7 +234,7 @@ func (dbManager *mongodbManagerImp) UpdateCustomer(customer *model.Customer) (*m
 		loggerObj.Error(err)
 		return nil, err
 	} else if result.MatchedCount != 1 {
-		var msg = fmt.Sprintf("nothing to update. Customer (%s) was not found", customer.ID.ToString())
+		var msg = fmt.Sprintf("nothing to update. CustomerID (%s) was not found", customer.ID.ToString())
 		loggerObj.Error(msg)
 		return nil, errors.New(msg)
 	} else {
@@ -431,13 +466,7 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoProjectListModel(
 		}
 
 		project := projectDb.toModel()
-		project.Owner = ownerCache[projectDb.OwnerID]
 		projects = append(projects, project)
-
-		if project.Customer, err = dbManager.GetCustomerByID(&mdbId{id: projectDb.CustomerID}); err != nil {
-			loggerObj.Error(err)
-			return model.ProjectList{}, err
-		}
 	}
 
 	return projects, nil
@@ -472,7 +501,7 @@ func (dbManager *mongodbManagerImp) CreateProject(project *model.Project) (*mode
 	if exists, err := dbManager.existsObject(projectDb.CustomerID, utils.CUSTOMERS_COLLECTION); err != nil {
 		return nil, err
 	} else if !exists {
-		err := errors.New("cannot create project with invalid customer id. Customer id doesn't exists")
+		err := errors.New("cannot create project with invalid customer id. CustomerID id doesn't exists")
 		loggerObj.Error(err)
 		return nil, err
 	}
@@ -521,18 +550,6 @@ func (dbManager *mongodbManagerImp) decodeBsonIntoProjectModel(result *mongo.Sin
 	}
 
 	project := projectDb.toModel()
-	if owner, err := dbManager.GetUserByID(&mdbId{id: projectDb.OwnerID}); err != nil {
-		return nil, err
-	} else {
-		project.Owner = owner
-	}
-
-	if customer, err := dbManager.GetCustomerByID(&mdbId{id: projectDb.CustomerID}); err != nil {
-		return nil, err
-	} else {
-		project.Customer = customer
-	}
-
 	return project, nil
 }
 
@@ -664,13 +681,14 @@ func (dbManager *mongodbManagerImp) GetUserByID(id model.ID) (*model.User, error
 	loggerObj := utils.LoggerObj()
 	defer loggerObj.Close()
 
-	dbId, err := primitive.ObjectIDFromHex(id.ToString())
+	dbId, err := dbManager.modelIDtoMongoID(id, loggerObj)
 
 	if err != nil {
 		loggerObj.Error(err)
 		return nil, err
 	}
 
+	loggerObj.Info(id.ToString())
 	collection := dbManager.collection(utils.USERS_COLLECTION)
 	result := collection.FindOne(context.TODO(), bson.M{utils.USER_ID_FIELD: dbId})
 

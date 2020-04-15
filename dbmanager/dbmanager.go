@@ -29,6 +29,8 @@ type DBManager interface {
 	AllCustomers() (model.CustomerList, error)
 	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
 	GetCustomerByID(customerId model.ID) (*model.Customer, error)
+	GetOwnerFromProjectID(projectId model.ID) (*model.User, error)
+	AllProjectsFromCustomer(customerId model.ID) (model.ProjectList, error)
 }
 
 var dbManagerInstance DBManager

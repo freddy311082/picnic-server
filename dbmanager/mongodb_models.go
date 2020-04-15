@@ -85,14 +85,24 @@ func (dbProject *mdbProjectModel) initFromModel(project *model.Project) error {
 }
 
 func (dbProject *mdbProjectModel) toModel() *model.Project {
+	var ownerId *mdbId
+	var customerId *mdbId
+
+	if dbProject.CustomerID.Hex() != "" {
+		ownerId = &mdbId{id: dbProject.CustomerID}
+	}
+
+	if dbProject.OwnerID.Hex() != "" {
+		customerId = &mdbId{id: dbProject.OwnerID}
+	}
+
 	return &model.Project{
 		ID:          &mdbId{id: dbProject.ID},
 		Name:        dbProject.Name,
 		Description: dbProject.Description,
 		CreatedAt:   dbProject.CreatedAt.Time(),
-		Owner:       nil,
-		Customer:    nil,
-		Fields:      nil,
+		Owner:       &model.User{ID: customerId},
+		Customer:    &model.Customer{ID: ownerId},
 	}
 }
 

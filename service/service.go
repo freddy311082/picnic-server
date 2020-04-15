@@ -37,10 +37,29 @@ type Service interface {
 	AllCustomers() (model.CustomerList, error)
 	AllCustomersWhereIDIsIn(ids model.IDList) (model.CustomerList, error)
 	CreateModelIDFromString(strId string) model.ID
+	GetOwnerFromProjectID(projectId model.ID) (*model.User, error)
+	GetCustomerByID(customerId model.ID) (*model.Customer, error)
+	AllProjectsFromCustomer(customerId model.ID) (model.ProjectList, error)
 }
 
 type serviceImp struct {
 	dbManager dbmanager.DBManager
+}
+
+func (service *serviceImp) AllProjectsFromCustomer(customerId model.ID) (model.ProjectList, error) {
+	return dbmanager.Instance().AllProjectsFromCustomer(customerId)
+}
+
+func (service *serviceImp) GetCustomerByID(customerId model.ID) (*model.Customer, error) {
+	if customerId == nil {
+		return nil, errors.New("customerID cannot be null")
+	}
+
+	return dbmanager.Instance().GetCustomerByID(customerId)
+}
+
+func (service *serviceImp) GetOwnerFromProjectID(projectId model.ID) (*model.User, error) {
+	return dbmanager.Instance().GetOwnerFromProjectID(projectId)
 }
 
 func (service *serviceImp) AllUsersWhereIDIsIn(ids model.IDList) (model.UserList, error) {
@@ -56,7 +75,7 @@ func (service *serviceImp) CreateCustomer(customer *model.Customer) (*model.Cust
 	defer loggerObj.Close()
 
 	if customer == nil || customer.Name == "" {
-		const msg = "unable to create a customer. Customer cannot be null or name cannot be empty"
+		const msg = "unable to create a customer. CustomerID cannot be null or name cannot be empty"
 		loggerObj.Error(msg)
 		return nil, errors.New(msg)
 	}
@@ -69,7 +88,7 @@ func (service *serviceImp) UpdateCustomer(customer *model.Customer) (*model.Cust
 	defer loggerObj.Close()
 
 	if customer != nil || customer.Name == "" {
-		const msg = "unable to create a customer. Customer cannot be null or name cannot be empty"
+		const msg = "unable to create a customer. CustomerID cannot be null or name cannot be empty"
 		loggerObj.Error(msg)
 		return nil, errors.New(msg)
 	}

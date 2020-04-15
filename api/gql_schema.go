@@ -42,8 +42,8 @@ type gqlProjectRsp struct {
 	Name        string
 	Description string
 	CreatedAt   time.Time `json:"created_at"`
-	Owner       *gqlUserRsp
-	Customer    *gqlCustomerRsp
+	OwnerID     model.ID
+	CustomerID  model.ID
 }
 
 type gqlProjectListRsp []*gqlProjectRsp
@@ -54,14 +54,8 @@ func gqlProjectFromModel(project *model.Project) *gqlProjectRsp {
 		Name:        project.Name,
 		Description: project.Description,
 		CreatedAt:   project.CreatedAt,
-	}
-
-	if project.Owner != nil {
-		result.Owner = gqlUserFromModel(project.Owner)
-	}
-
-	if project.Customer != nil {
-		result.Customer = gqlCustomerFromModel(project.Customer)
+		CustomerID:  project.Customer.ID,
+		OwnerID:     project.Owner.ID,
 	}
 
 	return result
@@ -146,7 +140,13 @@ func GetSchema() (*graphql.Schema, error) {
 			"owner": &graphql.Field{
 				Type: UserType,
 				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-					return nil, nil
+					if project, ok := p.Source.(*gqlProjectRsp); !ok {
+						return nil, errors.New("cannot get Owner from the a project without id")
+					} else if user, err := service.Instance().GetOwnerFromProjectID(project.OwnerID); err != nil {
+						return nil, err
+					} else {
+						return gqlUserFromModel(user), nil
+					}
 				},
 			},
 		},
@@ -169,19 +169,15 @@ func GetSchema() (*graphql.Schema, error) {
 				Type: &graphql.List{
 					OfType: ProjectType,
 				},
-				Description: "List of project linked to this Customer.",
+				Description: "List of project linked to this CustomerID.",
 				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-					if projects, ok := p.Args["projects"].([]interface{}); ok {
-						var ids model.IDList
-						for _, projectId := range projects {
-							if id, ok := projectId.(string); ok {
-								ids = append(ids, service.Instance().CreateModelIDFromString(id))
-							} else {
-								return nil, errors.New("invalid project id")
-							}
+					if customer, ok := p.Source.(*gqlCustomerRsp); ok {
+						id := service.Instance().CreateModelIDFromString(customer.ID)
+						if projects, err := service.Instance().AllProjectsFromCustomer(id); err != nil {
+							return &gqlProjectListRsp{}, nil
+						} else {
+							return gqlProjectListFromModel(projects), nil
 						}
-
-						return service.Instance().AllProjectWhereIDIsIn(ids)
 					}
 
 					return model.IDList{}, nil
@@ -190,8 +186,42 @@ func GetSchema() (*graphql.Schema, error) {
 		},
 	})
 
+	// Composed types
+
+	UserType.AddFieldConfig("projects", &graphql.Field{
+		Type: &graphql.List{OfType: ProjectType},
+		Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+			if user, ok := p.Source.(*gqlUserRsp); ok {
+				if projects, err := service.Instance().AllProjectsByUser(
+					&model.User{
+						ID:    service.Instance().CreateModelIDFromString(user.ID),
+						Email: user.Email,
+					}); err != nil {
+					return gqlProjectListRsp{}, err
+				} else {
+					return gqlProjectListFromModel(projects), nil
+				}
+			}
+
+			return nil, nil
+		},
+	})
+
 	ProjectType.AddFieldConfig("customer", &graphql.Field{
 		Type: CustomerType,
+		Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+			if project, ok := p.Source.(*gqlProjectRsp); ok {
+				utils.LoggerObj().Info(project.CustomerID.ToString())
+				utils.LoggerObj().Info(project.OwnerID.ToString())
+				if customer, err := service.Instance().GetCustomerByID(project.CustomerID); err != nil {
+					return nil, err
+				} else {
+					return gqlCustomerFromModel(customer), nil
+				}
+			}
+
+			return nil, nil
+		},
 	})
 
 	// Queries
@@ -264,7 +294,8 @@ the offset.`,
 					if projects, err := service.Instance().AllProjects(startPos, offset); err != nil {
 						return make(gqlProjectListRsp, 0), err
 					} else {
-						return gqlProjectListFromModel(projects), nil
+						gqlProjects := gqlProjectListFromModel(projects)
+						return gqlProjects, nil
 					}
 				},
 				Description: "List all projects linked to the current user",
@@ -326,7 +357,7 @@ the offset.`,
 					},
 					"customer_id": &graphql.ArgumentConfig{
 						Type:        &graphql.NonNull{OfType: graphql.ID},
-						Description: "Customer ID which represent the customer linked to this project.",
+						Description: "CustomerID ID which represent the customer linked to this project.",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
@@ -401,7 +432,7 @@ the offset.`,
 						return gqlCustomerFromModel(result), nil
 					}
 				},
-				Description: "Create new Customer in the system",
+				Description: "Create new CustomerID in the system",
 			},
 		},
 		Description: "Mutations definitions for Picnic GraphQL API.",

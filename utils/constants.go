@@ -21,6 +21,7 @@ const PROJECT_NAME_FIELD = "name"
 const PROJECT_CREATED_AT_FIELD = "created_at"
 const PROJECT_OWNER_ID_FIELD = "owner_id"
 const PROJECT_FIELDS_LIST_FIELD = "fields"
+const PROJECT_CUSTOMER_ID_FIELD = "customer_id"
 
 const CUSTOMERS_COLLECTION = "customers"
 const CUSTOMER_ID_FIELD = "_id"
