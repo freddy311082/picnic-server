@@ -70,7 +70,6 @@ func (dbManager *mongodbManagerImp) GetCustomerByID(customerId model.ID) (*model
 	if id, err := dbManager.modelIDtoMongoID(customerId, loggerObj); err != nil {
 		return nil, err
 	} else {
-		loggerObj.Info("Customer ID", id.Hex())
 		collection := dbManager.collection(utils.CUSTOMERS_COLLECTION)
 
 		if result := collection.FindOne(context.TODO(), bson.M{utils.CUSTOMER_ID_FIELD: id}); result.Err() != nil {
@@ -641,7 +640,6 @@ func (dbManager *mongodbManagerImp) RegisterNewUser(user *model.User) (*model.Us
 		userDB := mdbUserModel{}
 		userDB.initFromModel(user)
 		userDB.ID = primitive.NewObjectID()
-		loggerObj.Info(userDB.ID.String())
 
 		if result, err := collection.InsertOne(context.TODO(), userDB); err != nil {
 			loggerObj.Error(err.Error())
@@ -688,7 +686,6 @@ func (dbManager *mongodbManagerImp) GetUserByID(id model.ID) (*model.User, error
 		return nil, err
 	}
 
-	loggerObj.Info(id.ToString())
 	collection := dbManager.collection(utils.USERS_COLLECTION)
 	result := collection.FindOne(context.TODO(), bson.M{utils.USER_ID_FIELD: dbId})
 
