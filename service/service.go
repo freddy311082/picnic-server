@@ -40,10 +40,15 @@ type Service interface {
 	GetOwnerFromProjectID(projectId model.ID) (*model.User, error)
 	GetCustomerByID(customerId model.ID) (*model.Customer, error)
 	AllProjectsFromCustomer(customerId model.ID) (model.ProjectList, error)
+	GetProjectByID(projectId model.ID) (*model.Project, error)
 }
 
 type serviceImp struct {
 	dbManager dbmanager.DBManager
+}
+
+func (service *serviceImp) GetProjectByID(projectId model.ID) (*model.Project, error) {
+	return dbmanager.Instance().GetProject(projectId)
 }
 
 func (service *serviceImp) AllProjectsFromCustomer(customerId model.ID) (model.ProjectList, error) {

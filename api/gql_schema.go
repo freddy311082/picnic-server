@@ -339,7 +339,7 @@ the offset.`,
 				},
 			},
 			"getCustomer": &graphql.Field{
-				Type: UserType,
+				Type: CustomerType,
 				Args: graphql.FieldConfigArgument{
 					"id": &graphql.ArgumentConfig{
 						Type: &graphql.NonNull{OfType: graphql.ID},
@@ -357,7 +357,7 @@ the offset.`,
 				},
 			},
 			"getProject": &graphql.Field{
-				Type: UserType,
+				Type: ProjectType,
 				Args: graphql.FieldConfigArgument{
 					"id": &graphql.ArgumentConfig{
 						Type: &graphql.NonNull{OfType: graphql.ID},
@@ -365,10 +365,10 @@ the offset.`,
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					if id, ok := p.Args["id"].(string); ok {
-						if project, err := service.Instance().GetOwnerFromProjectID(service.Instance().CreateModelIDFromString(id)); err != nil {
+						if project, err := service.Instance().GetProjectByID(service.Instance().CreateModelIDFromString(id)); err != nil {
 							return nil, err
 						} else {
-							return gqlUserFromModel(project), nil
+							return gqlProjectFromModel(project), nil
 						}
 					}
 					return nil, errors.New("invalid project id")
