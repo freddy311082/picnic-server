@@ -10,12 +10,12 @@
   version = "v0.2.2"
 
 [[projects]]
-  digest = "1:065712c2023860afaa947828b6bdc3b569ef8b578cb279ed24f2e21f806df649"
+  digest = "1:621514c30e21fab61b17f02eafe22313ba9ba08589d6925c4677c4b16cfa8714"
   name = "github.com/go-chi/chi"
   packages = ["."]
   pruneopts = "UT"
-  revision = "183768ed5df7d0b039500727c380bfbaf9229c81"
-  version = "v4.1.0"
+  revision = "1fafc30c1d76663042337e150b02fbacdce3466c"
+  version = "v4.1.1"
 
 [[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
@@ -34,12 +34,12 @@
   revision = "ff6b7dc882cf4cfba7ee0b9f7dcc1ac096c554aa"
 
 [[projects]]
-  digest = "1:ebdeb808fe6861df1eaa262006a879bdbed826dd51c343bd5e681045e194997c"
+  digest = "1:d69a72de47dc4e85a2d1f661a0be88d9984baefc22c70bc5ecd3e9454065f3c5"
   name = "github.com/google/logger"
   packages = ["."]
   pruneopts = "UT"
-  revision = "7047ffcb7339f3f59be32de74a92217cb17cb40c"
-  version = "v1.0.1"
+  revision = "d64dead2e63a34d5f3acf453705de00534d39eec"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:01a3bf7bc37c96547897d253f8437c89cd8e80ea0211ff5f440fbc19f44cd14e"
@@ -62,7 +62,7 @@
   version = "v0.7.9"
 
 [[projects]]
-  digest = "1:a91b999a29bf71efd8671253f77c8854d48d83cef7dc1333bf120fab4c904560"
+  digest = "1:093b96fbb3db40828ecf711043048e8a3c4191fe7a7c10367db736427390f0b2"
   name = "github.com/klauspost/compress"
   packages = [
     "fse",
@@ -72,8 +72,8 @@
     "zstd/internal/xxhash",
   ]
   pruneopts = "UT"
-  revision = "788b7f06fee85b7e1d2aa4a3a86f8dbbbcc771ae"
-  version = "v1.10.3"
+  revision = "e2d2089232ece4911272106ae65a7a06746ea38a"
+  version = "v1.10.4"
 
 [[projects]]
   digest = "1:9e1d37b58d17113ec3cb5608ac0382313c5b59470b94ed97d0976e69c7022314"
@@ -108,7 +108,7 @@
   revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
 
 [[projects]]
-  digest = "1:4e4a37dcd6256af87909b0a756c3e119e53436de35ac7fd1f47e65289a881be9"
+  digest = "1:69bfe5ee56ac436a74298c8be4642907c84da2f4be05067799d1f1fc53fe8e84"
   name = "go.mongodb.org/mongo-driver"
   packages = [
     "bson",
@@ -144,8 +144,8 @@
     "x/mongo/driver/wiremessage",
   ]
   pruneopts = "UT"
-  revision = "17ea4abd2ac121376c1f782964fce1c3ee692915"
-  version = "v1.3.1"
+  revision = "dbe9cee06654c7d19e291eb74b9da49b4c6a0fd4"
+  version = "v1.3.2"
 
 [[projects]]
   branch = "master"
@@ -153,7 +153,7 @@
   name = "golang.org/x/crypto"
   packages = ["pbkdf2"]
   pruneopts = "UT"
-  revision = "0ec3e9974c59449edd84298612e9f16fa13368e8"
+  revision = "0848c9571904fcbcb24543358ca8b5a7dbfde875"
 
 [[projects]]
   branch = "master"
@@ -173,7 +173,7 @@
     "windows/svc/eventlog",
   ]
   pruneopts = "UT"
-  revision = "5766fd39f98ddd8d769ad4aedcee557dd28de90f"
+  revision = "669c56c373c468cbe0f0c12b7939832b26088d33"
 
 [[projects]]
   digest = "1:1093f2eb4b344996604f7d8b29a16c5b22ab9e1b25652140d3fede39f640d5cd"

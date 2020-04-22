@@ -268,7 +268,6 @@ the offset.`,
 						return gqlCustomerListFromModel(customers), nil
 					}
 				},
-				Description: "Get the list of customers.",
 			},
 			"allProjects": &graphql.Field{
 				Type: &graphql.List{OfType: ProjectType},
@@ -298,7 +297,82 @@ the offset.`,
 						return gqlProjects, nil
 					}
 				},
-				Description: "List all projects linked to the current user",
+			},
+			"getUserByID": &graphql.Field{
+				Type: UserType,
+				Args: graphql.FieldConfigArgument{
+					"id": &graphql.ArgumentConfig{
+						Type:        &graphql.NonNull{OfType: graphql.ID},
+						Description: "User id value.",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					if id, ok := p.Args["id"].(string); ok {
+						if user, err := service.Instance().GetUser(
+							&model.User{ID: service.Instance().CreateModelIDFromString(id)}); err != nil {
+							return nil, err
+						} else {
+							return gqlUserFromModel(user), nil
+						}
+					}
+
+					return nil, errors.New("invalid user id")
+				},
+			},
+			"getUserByEmail": &graphql.Field{
+				Type: UserType,
+				Args: graphql.FieldConfigArgument{
+					"email": &graphql.ArgumentConfig{
+						Type: &graphql.NonNull{OfType: graphql.String},
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					if email, ok := p.Args["email"].(string); ok {
+						if user, err := service.Instance().GetUser(
+							&model.User{Email: email}); err != nil {
+							return nil, err
+						} else {
+							return gqlUserFromModel(user), nil
+						}
+					}
+					return nil, errors.New("invalid user email")
+				},
+			},
+			"getCustomer": &graphql.Field{
+				Type: UserType,
+				Args: graphql.FieldConfigArgument{
+					"id": &graphql.ArgumentConfig{
+						Type: &graphql.NonNull{OfType: graphql.ID},
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					if id, ok := p.Args["id"].(string); ok {
+						if customer, err := service.Instance().GetCustomerByID(service.Instance().CreateModelIDFromString(id)); err != nil {
+							return nil, err
+						} else {
+							return gqlCustomerFromModel(customer), nil
+						}
+					}
+					return nil, errors.New("invalid customer id")
+				},
+			},
+			"getProject": &graphql.Field{
+				Type: UserType,
+				Args: graphql.FieldConfigArgument{
+					"id": &graphql.ArgumentConfig{
+						Type: &graphql.NonNull{OfType: graphql.ID},
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					if id, ok := p.Args["id"].(string); ok {
+						if project, err := service.Instance().GetOwnerFromProjectID(service.Instance().CreateModelIDFromString(id)); err != nil {
+							return nil, err
+						} else {
+							return gqlUserFromModel(project), nil
+						}
+					}
+					return nil, errors.New("invalid project id")
+				},
 			},
 		},
 		Description: "Root Query for Picnic GraphQL Web Server",
@@ -312,12 +386,10 @@ the offset.`,
 				Type: UserType,
 				Args: graphql.FieldConfigArgument{
 					"name": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "User Name",
+						Type: graphql.String,
 					},
 					"lastName": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "User Last Name",
+						Type: graphql.String,
 					},
 					"email": &graphql.ArgumentConfig{
 						Type:        &graphql.NonNull{OfType: graphql.String},
